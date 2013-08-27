@@ -37,6 +37,12 @@ parser.add_option("--Tcenterlines",
 parser.add_option("--Tcenterlights",
                   action="store_true", dest="taxi_centerlights", default=False,
                   help="Generate Taxiway centerline lights")
+parser.add_option("--Bheight",
+                  action="store", type="float", nargs=2, dest="bheight", default=(20, 30),
+                  help="Set building height range min, max")
+parser.add_option("--ATheight",
+                  action="store", type="float", nargs=2, dest="atheight", default=(30, 40),
+                  help="Set airport terminal building height range min, max")
 
 (options, args) = parser.parse_args()
 print options, args
@@ -49,7 +55,9 @@ elif len(args[0])!=4:
 if __name__ == "__main__":
     OurAirportsData = OurAirportsDataExtractor(icao=args[0])
     OSMAirportsData = OSMAirportDataExtractor(icao=args[0], file=args[1])
-    OXpsc = XPAPTDataCreator(args[0], args[1], centerlines=options.taxi_centerlines, centerlights=options.taxi_centerlines, taxiway_type=options.taxi_type, ourairportsdata = OurAirportsData, osmdata = OSMAirportsData)
+    OXpsc = XPAPTDataCreator(args[0], args[1], centerlines=options.taxi_centerlines, 
+                            centerlights=options.taxi_centerlines, taxiway_type=options.taxi_type, 
+                            ourairportsdata = OurAirportsData, osmdata = OSMAirportsData)
     OXpsc.WriteFileHeader()
     OXpsc.WriteAPTHeader()
     OXpsc.WriteRunwayDefs()
@@ -61,7 +69,8 @@ if __name__ == "__main__":
     OXpsc.WriteBeaconDefs()
     OXpsc.WriteFreqDefs()
     OXpsc.close()
-    DSFObject = DSFDataCreator(icao=args[0], osmdata=OXpsc.OSMAirportsData)
+    DSFObject = DSFDataCreator(icao=args[0], osmdata=OXpsc.OSMAirportsData,
+                                bldg_height=options.bheight, terminal_height=options.atheight )
     DSFObject.WriteFileHeader()
     DSFObject.WriteSceneryBoundaries()
     DSFObject.DefineFacadeObjects()

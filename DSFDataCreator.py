@@ -28,11 +28,14 @@ import os
 
 class DSFDataCreator(object):
 
-    def __init__(self, icao='', osmdata=None):
+    def __init__(self, icao='', osmdata=None, bldg_height = (20, 30), 
+                terminal_height = (30,40)):
         print 'Initializing DSFDataCreator...'
         self.icao = icao
         self.file = file
         self.OSMData = osmdata
+        self.bldg_height = bldg_height
+        self.terminal_height = terminal_height
         lat, lon = self.OSMData.lstBoundaries[0]
         self.latmin=lat
         self.latmax=lat
@@ -112,7 +115,8 @@ class DSFDataCreator(object):
     
     def CreateTerminals(self):
         for terminal in self.OSMData.lstTerminals:
-            bldg_height = random.randint(10, 36)
+            (min, max) = self.terminal_height
+            bldg_height = random.randint(min, max)
             wind_dir = self.IdentifyWinding(terminal)
             if wind_dir < 0:
                 terminal = terminal[::-1]
@@ -138,7 +142,8 @@ class DSFDataCreator(object):
     def CreateBldgs(self):
         for bldg in self.OSMData.lstBldgs:
             bldg_index = random.randint(6, 9)
-            bldg_height = random.randint(10, 36)
+            (min, max) = self.bldg_height
+            bldg_height = random.randint(min, max)
             wind_dir = self.IdentifyWinding(bldg)
             if wind_dir < 0:
                 bldg = bldg[::-1]
