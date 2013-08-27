@@ -1,0 +1,3 @@
+This tool generates data based on information extracted from openstreetmaps.org. This data is not provided as part of the tool. Users have to export this data themselves.  This data is available under the Open Database License (ODbL). - See more at: http://opendatacommons.org/licenses/odbl/1.0/
+
+This tool uses data extracted from OurAirports.com, an "open-aviation data website", where airport data is released under public domain. See more at: http://www.ourairports.com/data/
