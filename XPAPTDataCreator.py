@@ -228,24 +228,6 @@ class XPAPTDataCreator(object):
         while len(lstlPos) > 0:
             lstrPos.append(lstlPos.pop())
         return lstrPos
-        
-    def CalcTaxiAreaD(self, taxiway):
-        i = 0
-        width = 32
-        lstlPos = []
-        lstrPos = []
-        while i+1 < len(taxiway):
-            loffset = self.ResolveOffsetD(taxiway[i], taxiway[i+1], width/2)
-            roffset = self.ResolveOffsetD(taxiway[i], taxiway[i+1],  -width/2)
-            id, pos = taxiway[i]
-            lstlPos.append(loffset)
-            lstrPos.append(roffset)
-            i = i + 1
-        lstlPos.append(self.ResolveOffsetD(taxiway[-1], taxiway[-2], -width/2))
-        lstrPos.append(self.ResolveOffsetD(taxiway[-1], taxiway[-2], width/2))
-        while len(lstlPos) > 0:
-            lstrPos.append(lstlPos.pop())
-        return lstrPos
      
     def WriteTaxiwaySurfaceDefs(self):
         for taxiways in self.OSMAirportsData.lstTaxiways:
