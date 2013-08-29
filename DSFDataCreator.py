@@ -104,13 +104,13 @@ class DSFDataCreator(object):
     def WriteSceneryBoundaries(self, hndl, i, j):
         hndl.write("PROPERTY sim/west %d\n" % math.floor(self.lonmin+j))
         hndl.write("PROPERTY sim/east %d\n" % math.floor(self.lonmin+j+1))
-        hndl.write("PROPERTY sim/north %d\n" % math.floor(self.latmin+i))
-        hndl.write("PROPERTY sim/south %d\n" % math.floor(self.latmin+i+1))
+        hndl.write("PROPERTY sim/north %d\n" % math.floor(self.latmin+i+1))
+        hndl.write("PROPERTY sim/south %d\n" % math.floor(self.latmin+i))
         
     def DefineFacadeObjects(self, hndl):
-        self.lstfacades = [ 'lib/airport/Classic_Airports/Facades/classic1.fac',
-                            'lib/airport/Classic_Airports/Facades/classic2.fac',
-                            'lib/airport/Classic_Airports/Facades/classic3.fac',
+        self.lstfacades = [ 'lib/airport/Modern_Airports/Facades/modern1.fac',
+                            'lib/airport/Modern_Airports/Facades/modern2.fac',
+                            'lib/airport/Modern_Airports/Facades/modern3.fac',
                             'lib/airport/Common_Elements/Hangars/White_Hangar.fac',
                             'lib/airport/Common_Elements/Misc_Buildings/Cargo_Terminal.fac',
                             'lib/airport/Common_Elements/Fence_Facades/Fence.fac',
@@ -137,8 +137,9 @@ class DSFDataCreator(object):
     def CreateTerminals(self):
         for terminal in self.OSMData.lstTerminals:
             (min, max) = self.terminal_height
+            terminal_index = random.randint(0, 2)
             bldg_height = random.randint(min, max)
-            self.WritePolygon(0, bldg_height, 3, terminal)
+            self.WritePolygon(terminal_index, bldg_height, 3, terminal)
     
     def CreateHangars(self):
         for hangar in self.OSMData.lstHangars:
