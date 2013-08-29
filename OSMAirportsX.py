@@ -64,6 +64,7 @@ if __name__ == "__main__":
     OXpsc.WritePapiDefs()
     OXpsc.WriteTaxiwaySurfaceDefs()
     OXpsc.WriteTaxiwayCenterLineDefs()
+    OXpsc.WriteServiceRoadDefs()
     OXpsc.WritePavedSurfaceDefs()
     OXpsc.WriteAirportBoundaryDefs()
     OXpsc.WriteBeaconDefs()

@@ -45,6 +45,8 @@ class OSMAirportDataExtractor(object):
         self.lstBldgs = []
         self.lstFenceRefs = []
         self.lstFences = []
+        self.lstServiceRoadRefs = []
+        self.lstServiceRoads = []
         self.lstBeacons = []
         self.lstPapi = []
         self.file = file
@@ -75,6 +77,10 @@ class OSMAirportDataExtractor(object):
             if 'icao' in tags:
                 if tags['icao'] != self.icao:
                     sys.exit("ICAO code in OSM data different from requested Airport!!!")
+            if 'highway' in tags:
+                for subtags in tags:
+                    if (tags[subtags] == 'service') or (tags[subtags] == 'tertiary'):
+                        self.lstServiceRoadRefs.append((osmid, refs))
             if 'building' in tags:
                 if 'aeroway' not in tags or ((tags['aeroway'] != 'terminal') and (tags['aeroway'] != 'hangar')):
                     self.lstBldgRefs.append(refs)
@@ -87,9 +93,10 @@ class OSMAirportDataExtractor(object):
                     if tags[subtags] == 'aerodrome':
                         self.lstBoundaryRefs.append(refs)
                     if tags[subtags] == 'runway':
-                        runwayName = re.split('/', tags['name'])
-                        runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])
-                        self.lstRunwayRefs.append(runwayRefs)
+                        if 'name' in tags:
+                            runwayName = re.split('/', tags['name'])
+                            runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])
+                            self.lstRunwayRefs.append(runwayRefs)
                     if tags[subtags] == 'taxiway':
                         self.lstTaxiwayRefs.append((osmid, refs))
                     if tags[subtags] == 'apron':
@@ -130,7 +137,11 @@ class OSMAirportDataExtractor(object):
                 strRunway1 = "%02d%s" % (runwayNum, runwaySuffix)
                 if strRunway1 == runwayNumber:
                     lat, lon = self.CoordsFromRef(ref1)
+                    found = 1
                     break
+        if found != 1:
+            sys.exit("Did not find runway %s in OSM or OurAirports Data!  \
+                        Either or both of them may be incorrect/outdated. Correct the problem to proceed further" % runwayNumber)
         if tuple == 1:
             return(float(lat), float(lon))
         else:
@@ -173,7 +184,11 @@ class OSMAirportDataExtractor(object):
             if henum.endswith('L') or henum.endswith('C') or henum.endswith('R'):
                 runwayNum = int(henum[:-1])
                 runwaySuffix = henum[-1]
+            else:
+                runwayNum = int(henum)
+                runwaySuffix = ''
             strRunway = "%02d%s" % (runwayNum, runwaySuffix)
+            print strRunway, runwayNumber
             if strRunway == runwayNumber:
                 lat, lon = self.CoordsFromRef(ref1)
                 break
@@ -224,7 +239,6 @@ class OSMAirportDataExtractor(object):
             lsttmp = []
             id, refs = taxiways
             for taxiway in refs:
-                if taxiway == None: continue
                 coord = self.CoordsFromRef(taxiway)
                 lsttmp.append((id, coord))
             self.lstTaxiways.append(copy.deepcopy(lsttmp))
@@ -252,4 +266,19 @@ class OSMAirportDataExtractor(object):
                 coord = self.CoordsFromRef(ref)
                 lsttmp.append(coord)
             self.lstFences.append(copy.deepcopy(lsttmp))
+        for roads in self.lstServiceRoadRefs:
+            lsttmp = []
+            id, refs = roads
+            for road in refs:
+                coord = self.CoordsFromRef(road)
+                lsttmp.append((id, coord))
+            self.lstServiceRoads.append(copy.deepcopy(lsttmp))
+        print "Number of Runways: %d" % len(self.lstRunwayRefs)
+        print "Number of Aprons: %d" % len(self.lstApronRefs)
+        print "Number of Terminals: %d" % len(self.lstTerminalRefs)
+        print "Number of Taxiways: %d" % len(self.lstTaxiwayRefs)
+        print "Number of Hangars: %d" % len(self.lstHangarRefs)
+        print "Number of Buildings: %d" % len(self.lstBldgRefs)
+        print "Number of Fences: %d" % len(self.lstFenceRefs)
+        print "Number of Service Roads: %d" % len(self.lstServiceRoadRefs)
 

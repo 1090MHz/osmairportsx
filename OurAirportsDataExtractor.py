@@ -90,6 +90,7 @@ class OurAirportsDataExtractor(object):
         elif runway['surface'] == 'ASP': surfaceCode = 1
         elif runway['surface'] == 'ASPH-E': surfaceCode = 1
         elif runway['surface'] == 'ASPH-TRTD-P': surfaceCode = 1
+        elif runway['surface'] == 'ASPH-CONC-G': surfaceCode = 1
         elif runway['surface'] == 'PEM': surfaceCode = 2
         elif runway['surface'] == 'CON': surfaceCode = 2
         elif runway['surface'] == 'CONC': surfaceCode = 2
