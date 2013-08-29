@@ -45,7 +45,6 @@ parser.add_option("--ATheight",
                   help="Set airport terminal building height range min, max")
 
 (options, args) = parser.parse_args()
-print options, args
 if len(args) != 2:
     parser.print_help()   
     parser.error("Two arguments required!")
@@ -72,9 +71,6 @@ if __name__ == "__main__":
     OXpsc.close()
     DSFObject = DSFDataCreator(icao=args[0], osmdata=OXpsc.OSMAirportsData,
                                 bldg_height=options.bheight, terminal_height=options.atheight )
-    DSFObject.WriteFileHeader()
-    DSFObject.WriteSceneryBoundaries()
-    DSFObject.DefineFacadeObjects()
     DSFObject.CreateTerminals()
     DSFObject.CreateHangars()
     DSFObject.CreateBldgs()

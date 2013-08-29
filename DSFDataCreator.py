@@ -47,13 +47,19 @@ class DSFDataCreator(object):
             if lat > self.latmax: self.latmax = lat
             if lon < self.lonmin: self.lonmin = lon
             if lon > self.lonmax: self.lonmax = lon
+        self.lsthnddsf = [[0 for i in range(int(self.latmax)-int(self.latmin) + 2)] for i in range(int(self.lonmax)-int(self.lonmin) + 2)]
         self.path = os.path.join('.', icao)
         self.mkdir(self.path)
         self.path = os.path.join(self.path, 'Earth Nav Data')
         self.mkdir(self.path)
-        self.dsffile = "%+3d%+04d.txt" % (math.floor(self.latmin), math.floor(self.lonmin))
-        self.hndDSF = open(self.dsffile, "wb")
-        print("Scenery File %s created..." % self.dsffile)
+        for i in range(int(self.latmax)-int(self.latmin) + 1):
+            for j in range(int(self.lonmax)-int(self.lonmin) + 1):
+                self.dsffile = "%+3d%+04d.txt" % (math.floor(self.latmin)+i, math.floor(self.lonmin)+j)
+                self.lsthnddsf[i][j]=open(self.dsffile, "wb")
+                self.WriteFileHeader(self.lsthnddsf[i][j], i, j)
+                self.WriteSceneryBoundaries(self.lsthnddsf[i][j], i, j)
+                self.DefineFacadeObjects(self.lsthnddsf[i][j])
+                print("Scenery File %s created..." % self.dsffile)
             
     def mkdir(self, path):
         print 'Creating %s folder' % path
@@ -64,29 +70,44 @@ class DSFDataCreator(object):
                 raise
                 print 'Failed!!!'
                 sys.exit(0)
+                
+    def WritePolygon(self, arg1, arg2, arg3, lst):
+        wind_dir = self.IdentifyWinding(lst)
+        if wind_dir < 0:
+                lst = lst[::-1]
+        lat, lon = lst[0]
+        latindex = int(lat) - int(self.latmin)
+        lonindex = int(lon) - int(self.lonmin)
+        self.lsthnddsf[latindex][lonindex].write('BEGIN_POLYGON %s %s %s\n' % (arg1, arg2, arg3))
+        self.lsthnddsf[latindex][lonindex].write('BEGIN_WINDING\n')
+        for lat, lon in lst[:-1]:
+            self.lsthnddsf[latindex][lonindex].write("POLYGON_POINT %f %f %f\n" % (lon, lat, 0.0))
+        self.lsthnddsf[latindex][lonindex].write('END_WINDING\n')
+        self.lsthnddsf[latindex][lonindex].write('END_POLYGON\n')
         
-    def WriteFileHeader(self):
+    def WriteFileHeader(self, hndl, i, j):
         if sys.platform == 'darwin':
             plm = 'A'
         else:
             plm = 'I'
-        self.hndDSF.write("%s\n" % plm)
-        self.hndDSF.write('800\n')
-        self.hndDSF.write('DSF2TEXT\n')
-        self.hndDSF.write('PROPERTY sim/planet earth\n')
-        self.hndDSF.write('PROPERTY sim/overlay 1\n')
-        self.hndDSF.write('PROPERTY sim/require_agpoint 1/0\n')
-        self.hndDSF.write('PROPERTY sim/require_object 1/0\n')
-        self.hndDSF.write('PROPERTY sim/require_facade 1/0\n')
-        self.hndDSF.write('PROPERTY sim/creation_agent OSMAirportsX\n')
+        hndl.write("%s\n" % plm)
+        hndl.write('800\n')
+        hndl.write('DSF2TEXT\n')
+        hndl.write('PROPERTY sim/planet earth\n')
+        hndl.write('PROPERTY sim/overlay 1\n')
+        hndl.write('PROPERTY sim/require_agpoint 1/0\n')
+        hndl.write('PROPERTY sim/require_object 1/0\n')
+        hndl.write('PROPERTY sim/require_facade 1/0\n')
+        hndl.write('PROPERTY sim/creation_agent OSMAirportsX\n')
+        hndl.write("PROPERTY sim/exclude_obj %.6f/%.6f/%.6f/%.6f\n" % (self.lonmin+j, self.latmin+i, self.lonmin+j+1, self.latmin+i+1))
         
-    def WriteSceneryBoundaries(self):
-        self.hndDSF.write("PROPERTY sim/west %d\n" % math.floor(self.lonmin))
-        self.hndDSF.write("PROPERTY sim/east %d\n" % math.ceil(self.lonmax))
-        self.hndDSF.write("PROPERTY sim/north %d\n" % math.ceil(self.latmax))
-        self.hndDSF.write("PROPERTY sim/south %d\n" % math.floor(self.latmin))
+    def WriteSceneryBoundaries(self, hndl, i, j):
+        hndl.write("PROPERTY sim/west %d\n" % math.floor(self.lonmin+j))
+        hndl.write("PROPERTY sim/east %d\n" % math.floor(self.lonmin+j+1))
+        hndl.write("PROPERTY sim/north %d\n" % math.floor(self.latmin+i))
+        hndl.write("PROPERTY sim/south %d\n" % math.floor(self.latmin+i+1))
         
-    def DefineFacadeObjects(self):
+    def DefineFacadeObjects(self, hndl):
         self.lstfacades = [ 'lib/airport/Classic_Airports/Facades/classic1.fac',
                             'lib/airport/Classic_Airports/Facades/classic2.fac',
                             'lib/airport/Classic_Airports/Facades/classic3.fac',
@@ -99,7 +120,7 @@ class DSFDataCreator(object):
                             'lib/g10/autogen/point_building_30x30_16.fac'
                              ]
         for facade in self.lstfacades:
-            self.hndDSF.write("POLYGON_DEF %s\n" % facade)
+            hndl.write("POLYGON_DEF %s\n" % facade)
             
     """DSFs are required to have counter-clockwise windings for its polygons.
     A simple check to identify if it is indeed so; if not, the caller should reverse the list of polygon nodes"""
@@ -117,63 +138,30 @@ class DSFDataCreator(object):
         for terminal in self.OSMData.lstTerminals:
             (min, max) = self.terminal_height
             bldg_height = random.randint(min, max)
-            wind_dir = self.IdentifyWinding(terminal)
-            if wind_dir < 0:
-                terminal = terminal[::-1]
-            self.hndDSF.write('BEGIN_POLYGON 0 %d 3\n' % bldg_height)
-            self.hndDSF.write('BEGIN_WINDING\n')
-            for lat, lon in terminal[:-1]:
-                self.hndDSF.write("POLYGON_POINT %f %f %f\n" % (lon, lat, 0.0))
-            self.hndDSF.write('END_WINDING\n')
-            self.hndDSF.write('END_POLYGON\n')
+            self.WritePolygon(0, bldg_height, 3, terminal)
     
     def CreateHangars(self):
         for hangar in self.OSMData.lstHangars:
-            wind_dir = self.IdentifyWinding(hangar)
-            if wind_dir < 0:
-                hangar = hangar[::-1]
-            self.hndDSF.write('BEGIN_POLYGON 3 19 3\n')
-            self.hndDSF.write('BEGIN_WINDING\n')
-            for lat, lon in hangar[:-1]:
-                self.hndDSF.write("POLYGON_POINT %f %f %f\n" % (lon, lat, 0.0))
-            self.hndDSF.write('END_WINDING\n')
-            self.hndDSF.write('END_POLYGON\n')
+            self.WritePolygon(3, 19, 3, hangar)
             
     def CreateBldgs(self):
         for bldg in self.OSMData.lstBldgs:
             bldg_index = random.randint(6, 9)
             (min, max) = self.bldg_height
             bldg_height = random.randint(min, max)
-            wind_dir = self.IdentifyWinding(bldg)
-            if wind_dir < 0:
-                bldg = bldg[::-1]
-            self.hndDSF.write('BEGIN_POLYGON %d %d 3\n' % (bldg_index, bldg_height))
-            self.hndDSF.write('BEGIN_WINDING\n')
-            for lat, lon in bldg[:-1]:
-                self.hndDSF.write("POLYGON_POINT %f %f %f\n" % (lon, lat, 0.0))
-            self.hndDSF.write('END_WINDING\n')
-            self.hndDSF.write('END_POLYGON\n')
-            
+            self.WritePolygon(bldg_index, bldg_height, 3, bldg)
+
     def CreateFences(self):
         for fence in self.OSMData.lstFences:
-            wind_dir = self.IdentifyWinding(fence)
-            if wind_dir < 0:
-                fence = fence[::-1]
-            self.hndDSF.write('BEGIN_POLYGON 5 50 3\n')
-            self.hndDSF.write('BEGIN_WINDING\n')
-            for lat, lon in fence:
-                self.hndDSF.write("POLYGON_POINT %f %f %f\n" % (lon, lat, 0.0))
-            self.hndDSF.write('END_WINDING\n')
-            self.hndDSF.write('END_POLYGON\n')
-
-    def GetFilename(self):
-        return self.dsffile
+            self.WritePolygon(5, 50, 3, fence)
         
     def close(self):
-        self.hndDSF.close()
-        newdir = "%+3d%+04d" % (self.latmin - (self.latmin%10), self.lonmin-(self.lonmin%10))
-        self.scenery_path = os.path.join(self.path, newdir)
-        self.mkdir(self.scenery_path)
-        print 'Custom Scenery folders created...'
-        shutil.copy(self.dsffile, self.scenery_path)
+        for i in range(int(self.latmax)-int(self.latmin) + 1):
+            for j in range(int(self.lonmax)-int(self.lonmin) + 1):
+                self.lsthnddsf[i][j].close()
+                dsffile = "%+3d%+04d.txt" % (math.floor(self.latmin)+i, math.floor(self.lonmin)+j)
+                newdir = "%+3d%+04d" % ((self.latmin+i) - ((self.latmin+i)%10), (self.lonmin+j)-((self.lonmin+j)%10))
+                self.scenery_path = os.path.join(self.path, newdir)
+                self.mkdir(self.scenery_path)
+                shutil.copy(dsffile, self.scenery_path)
         
