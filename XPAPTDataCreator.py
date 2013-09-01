@@ -1,4 +1,4 @@
-#Copyright (c) 2011-2012, Shankar Giri V All rights reserved.
+#Copyright (c) 2013, Shankar Giri V All rights reserved.
 #
 #Redistribution and use in source and binary forms, with or without
 #modification, are permitted provided that the following conditions are met:
@@ -158,10 +158,24 @@ class XPAPTDataCreator(object):
             (runwayNumber, runwayHeading) = self.FindClosestRunway(lat, lon)
             self.hndApt.write("21   %.8f %013.8f  2 %.2f   3.00 %s  PAPI\n" % (float(lat), float(lon), float(runwayHeading), runwayNumber))
             
+    def OptimizePolygon(self, area):
+        i = 0
+        lstArea = []
+        lstArea.append(area[0])
+        while i+1 < len(area):
+            x1, y1 = area[i]
+            x2, y2 = area[i+1]
+            if self.FindDistance(x1, y1, x2, y2) > 1e-6:
+                lstArea.append(area[i+1])
+            i = i + 1
+        return lstArea
+                        
     def WritePavedSurfaceDefs(self):
         for pavement in self.OSMAirportsData.lstAprons:
             self.hndApt.write('\n110   2 0.25  0.00 xxx\n')
-            for lat, lon in pavement[:-2]:
+            #lstArea = self.OptimizePolygon(pavement)
+            lstArea = pavement
+            for lat, lon in lstArea[:-2]:
                self.hndApt.write("111  %.8f %013.8f\n" % (float(lat), float(lon)))
             (lat, lon) = pavement[-2]
             self.hndApt.write("113  %.8f %013.8f\n" % (float(lat), float(lon)))
