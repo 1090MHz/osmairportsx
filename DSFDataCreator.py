@@ -90,6 +90,19 @@ class DSFDataCreator(object):
             plm = 'A'
         else:
             plm = 'I'
+        latmin = math.floor(self.latmin+i)
+        lonmin = math.floor(self.lonmin+j)
+        latmax = math.floor(self.latmin+i+1)
+        lonmax = math.floor(self.lonmin+j+1)
+        if latmin < self.latmin:
+            latmin = self.latmin
+        if lonmin < self.lonmin:
+            lonmin = self.lonmin
+        if latmax > self.latmax:
+            latmax = self.latmax
+        if lonmax > self.lonmax:
+            lonmax = self.lonmax
+        
         hndl.write("%s\n" % plm)
         hndl.write('800\n')
         hndl.write('DSF2TEXT\n')
@@ -99,7 +112,9 @@ class DSFDataCreator(object):
         hndl.write('PROPERTY sim/require_object 1/0\n')
         hndl.write('PROPERTY sim/require_facade 1/0\n')
         hndl.write('PROPERTY sim/creation_agent OSMAirportsX\n')
-        hndl.write("PROPERTY sim/exclude_obj %.6f/%.6f/%.6f/%.6f\n" % (self.lonmin+j, self.latmin+i, self.lonmin+j+1, self.latmin+i+1))
+        hndl.write("PROPERTY sim/exclude_obj %.6f/%.6f/%.6f/%.6f\n" % (lonmin, latmin, lonmax, latmax))
+        hndl.write("PROPERTY sim/exclude_fac %.6f/%.6f/%.6f/%.6f\n" % (lonmin, latmin, lonmax, latmax))
+        hndl.write("PROPERTY sim/exclude_for %.6f/%.6f/%.6f/%.6f\n" % (lonmin, latmin, lonmax, latmax))
         
     def WriteSceneryBoundaries(self, hndl, i, j):
         hndl.write("PROPERTY sim/west %d\n" % math.floor(self.lonmin+j))
@@ -166,3 +181,9 @@ class DSFDataCreator(object):
                 self.mkdir(self.scenery_path)
                 shutil.copy(dsffile, self.scenery_path)
         
+    def WriteDSF(self):
+        self.CreateTerminals()
+        self.CreateHangars()
+        self.CreateBldgs()
+        self.CreateFences()
+        self.close()

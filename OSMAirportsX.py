@@ -57,23 +57,8 @@ if __name__ == "__main__":
     OXpsc = XPAPTDataCreator(args[0], args[1], centerlines=options.taxi_centerlines, 
                             centerlights=options.taxi_centerlines, taxiway_type=options.taxi_type, 
                             ourairportsdata = OurAirportsData, osmdata = OSMAirportsData)
-    OXpsc.WriteFileHeader()
-    OXpsc.WriteAPTHeader()
-    OXpsc.WriteRunwayDefs()
-    OXpsc.WritePapiDefs()
-    OXpsc.WriteTaxiwaySurfaceDefs()
-    OXpsc.WriteTaxiwayCenterLineDefs()
-    OXpsc.WriteServiceRoadDefs()
-    OXpsc.WritePavedSurfaceDefs()
-    OXpsc.WriteAirportBoundaryDefs()
-    OXpsc.WriteBeaconDefs()
-    OXpsc.WriteFreqDefs()
-    OXpsc.close()
+    OXpsc.WriteAptDat()
     DSFObject = DSFDataCreator(icao=args[0], osmdata=OXpsc.OSMAirportsData,
                                 bldg_height=options.bheight, terminal_height=options.atheight )
-    DSFObject.CreateTerminals()
-    DSFObject.CreateHangars()
-    DSFObject.CreateBldgs()
-    DSFObject.CreateFences()
-    DSFObject.close()
+    DSFObject.WriteDSF()
     

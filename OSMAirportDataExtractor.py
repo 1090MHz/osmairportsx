@@ -80,7 +80,11 @@ class OSMAirportDataExtractor(object):
             if 'highway' in tags:
                 for subtags in tags:
                     if (tags[subtags] == 'service') or (tags[subtags] == 'tertiary'):
-                        self.lstServiceRoadRefs.append((osmid, refs))
+                        if 'name' in tags:
+                            name = tags['name']
+                        else:
+                            name = ''
+                        self.lstServiceRoadRefs.append((osmid, name, refs))
             if 'building' in tags:
                 if 'aeroway' not in tags or ((tags['aeroway'] != 'terminal') and (tags['aeroway'] != 'hangar')):
                     self.lstBldgRefs.append(refs)
@@ -98,11 +102,25 @@ class OSMAirportDataExtractor(object):
                             runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])
                             self.lstRunwayRefs.append(runwayRefs)
                     if tags[subtags] == 'taxiway':
-                        self.lstTaxiwayRefs.append((osmid, refs))
+                        if 'ref' in tags:
+                           name = tags['ref']
+                        elif 'name' in tags:
+                            name = tags['name']
+                        else:
+                            name = ''
+                        self.lstTaxiwayRefs.append((osmid, name, refs))
                     if tags[subtags] == 'apron':
-                        self.lstApronRefs.append(refs)
+                        if 'name' in tags:
+                            name = tags['name']
+                        else:
+                            name = ''
+                        self.lstApronRefs.append((osmid, name, refs))
                     if tags[subtags] == 'terminal':
-                        self.lstTerminalRefs.append(refs)
+                        if 'name' in tags:
+                            name = tags['name']
+                        else:
+                            name = ''
+                        self.lstTerminalRefs.append((osmid, name, refs))
                     if tags[subtags] == 'hangar':
                         self.lstHangarRefs.append(refs)
                         
@@ -229,56 +247,62 @@ class OSMAirportDataExtractor(object):
             runway['he_ident'] = name1
             runway['he_pos'] = self.CoordsFromRef(pos1)
             self.lstRunways.append(copy.deepcopy(runway))
-        print "Done.\nExtracting Aprons and paved surfaces"
-        for aprons in self.lstApronRefs:
+        print "Done.\nExtracting Aprons and paved surfaces..."
+        for refs in self.lstApronRefs:
             lsttmp = []
+            osmid, name, aprons = refs
             for apron in aprons:
                 lsttmp.append(self.CoordsFromRef(apron))
-            self.lstAprons.append(copy.deepcopy(lsttmp))
-        for taxiways in self.lstTaxiwayRefs:
+            self.lstAprons.append((osmid, name, copy.deepcopy(lsttmp)))
+        print "Done.\nExtracting Taxiway segments..."
+        for refs in self.lstTaxiwayRefs:
             lsttmp = []
-            id, refs = taxiways
-            for taxiway in refs:
-                coord = self.CoordsFromRef(taxiway)
-                lsttmp.append((id, coord))
-            self.lstTaxiways.append(copy.deepcopy(lsttmp))
-        for terminal in self.lstTerminalRefs:
+            osmid, name, taxiways = refs
+            for taxiway in taxiways:
+                lsttmp.append(self.CoordsFromRef(taxiway))
+            self.lstTaxiways.append((osmid, name, copy.deepcopy(lsttmp)))
+        print "Done.\nExtracting Airport Terminals..."
+        for refs in self.lstTerminalRefs:
             lsttmp = []
-            for ref in terminal:
-                coord = self.CoordsFromRef(ref)
-                lsttmp.append(coord)
+            osmid, name, terminals = refs
+            for terminal in terminals:
+                lsttmp.append(self.CoordsFromRef(terminal))
             self.lstTerminals.append(copy.deepcopy(lsttmp))
+        print "Done.\nExtracting Hangars..."
         for hangar in self.lstHangarRefs:
             lsttmp = []
             for ref in hangar:
                 coord = self.CoordsFromRef(ref)
                 lsttmp.append(coord)
             self.lstHangars.append(copy.deepcopy(lsttmp))
+        print "Done.\nExtracting Buildings..."
         for bldg in self.lstBldgRefs:
             lsttmp = []
             for ref in bldg:
                 coord = self.CoordsFromRef(ref)
                 lsttmp.append(coord)
             self.lstBldgs.append(copy.deepcopy(lsttmp))
+        print "Done.\nExtracting Fence segments..."
         for fence in self.lstFenceRefs:
             lsttmp = []
             for ref in fence:
                 coord = self.CoordsFromRef(ref)
                 lsttmp.append(coord)
             self.lstFences.append(copy.deepcopy(lsttmp))
-        for roads in self.lstServiceRoadRefs:
+        print "Done.\nExtracting Service Road segments..."
+        for refs in self.lstServiceRoadRefs:
             lsttmp = []
-            id, refs = roads
-            for road in refs:
+            osmid, name, roads = refs
+            for road in roads:
                 coord = self.CoordsFromRef(road)
-                lsttmp.append((id, coord))
-            self.lstServiceRoads.append(copy.deepcopy(lsttmp))
+                lsttmp.append(coord)
+            self.lstServiceRoads.append((osmid, name, copy.deepcopy(lsttmp)))
         print "Number of Runways: %d" % len(self.lstRunwayRefs)
         print "Number of Aprons: %d" % len(self.lstApronRefs)
         print "Number of Terminals: %d" % len(self.lstTerminalRefs)
-        print "Number of Taxiways: %d" % len(self.lstTaxiwayRefs)
+        print "Number of Taxiway Segments: %d" % len(self.lstTaxiwayRefs)
         print "Number of Hangars: %d" % len(self.lstHangarRefs)
         print "Number of Buildings: %d" % len(self.lstBldgRefs)
-        print "Number of Fences: %d" % len(self.lstFenceRefs)
-        print "Number of Service Roads: %d" % len(self.lstServiceRoadRefs)
+        print "Number of Fence Segments: %d" % len(self.lstFenceRefs)
+        print "Number of Service Road Segments: %d" % len(self.lstServiceRoadRefs)
 
