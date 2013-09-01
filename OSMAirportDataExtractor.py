@@ -39,6 +39,7 @@ class OSMAirportDataExtractor(object):
         self.lstAprons = []
         self.lstTerminalRefs = []
         self.lstTerminals = []
+        self.lstGates = []
         self.lstHangarRefs = []
         self.lstHangars = []
         self.lstBldgRefs = []
@@ -68,6 +69,9 @@ class OSMAirportDataExtractor(object):
                     if tags[subtags] == 'papi':
                         (lon, lat) = position
                         self.lstPapi.append((lat, lon))
+                    if tags[subtags] == 'gate':
+                        (lon, lat) = position
+                        self.lstGates.append((lat, lon))
             #print '%s %.4f %.4f' % (osm_id, lon, lat)
             #self.coords_list.append(Coords(osm_id, lon, lat))
 
@@ -300,6 +304,7 @@ class OSMAirportDataExtractor(object):
         print "Number of Runways: %d" % len(self.lstRunwayRefs)
         print "Number of Aprons: %d" % len(self.lstApronRefs)
         print "Number of Terminals: %d" % len(self.lstTerminalRefs)
+        print "Number of Gates: %d" % len(self.lstGates)
         print "Number of Taxiway Segments: %d" % len(self.lstTaxiwayRefs)
         print "Number of Hangars: %d" % len(self.lstHangarRefs)
         print "Number of Buildings: %d" % len(self.lstBldgRefs)

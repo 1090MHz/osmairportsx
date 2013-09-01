@@ -134,6 +134,12 @@ class DSFDataCreator(object):
                             'lib/g10/autogen/point_building_30x30_10.fac',
                             'lib/g10/autogen/point_building_30x30_16.fac'
                              ]
+        self.lstobjects = ['lib/airport/Ramp_Equipment/Jetway_250cm.obj',
+                            'lib/airport/Ramp_Equipment/Jetway_400cm.obj',
+                            'lib/airport/Ramp_Equipment/Jetway_500cm.obj'
+                            ]
+        for object in self.lstobjects:
+            hndl.write("OBJECT_DEF %s\n" % object)
         for facade in self.lstfacades:
             hndl.write("POLYGON_DEF %s\n" % facade)
             
@@ -155,7 +161,65 @@ class DSFDataCreator(object):
             terminal_index = random.randint(0, 2)
             bldg_height = random.randint(min, max)
             self.WritePolygon(terminal_index, bldg_height, 3, terminal)
-    
+            
+            
+    def ShortestDistLineAndPt(self, Pt1, Pt2, Pt3):
+        y1, x1 = Pt1
+        y2, x2 = Pt2
+        y3, x3 = Pt3
+        dx = float(x2-x1)
+        dy = float(y2-y1)
+        length = dx*dx + dy*dy
+        unit_vector = ((x3 - x1) * dx + (y3 - y1) * dy) / length
+        if unit_vector > 1:
+            unit_vector = 1
+        elif unit_vector < 0:
+            unit_vector = 0
+        x = x1 + unit_vector * dx
+        y = y1 + unit_vector * dy
+        distx = x - x3
+        disty = y - y3
+        dist = math.sqrt(distx*distx + disty*disty)
+        return (dist, (y, x))
+        
+    def Bearing(self, P1,P2):
+        lat1, lon1 = P1
+        lat2, lon2 = P2
+        lat1 = math.radians(lat1)
+        lon1 = math.radians(lon1)
+        lat2 = math.radians(lat2)
+        lon2 = math.radians(lon2)
+        dlat = lat2-lat1
+        dlon = lon2-lon1
+        bearing = math.atan2( (math.sin(dlon)*math.cos(lat2)) , (math.cos(lat1)*math.sin(lat2) - math.sin(lat1)*math.cos(lat2)*math.cos(dlon)) )
+        bearing = math.degrees(bearing)
+        if bearing < 0: bearing = bearing + 360
+        return (bearing)
+
+    def CreateGates(self):
+        for gatepos in self.OSMData.lstGates:
+            distmin = 0
+            for terminal in self.OSMData.lstTerminals:
+                i = 0
+                while i+1<len(terminal):
+                    x1, y1 = terminal[i]
+                    x2, y2 = terminal[i+1]
+                    dist, pos = self.ShortestDistLineAndPt(terminal[i], terminal[i+1], gatepos)
+                    if distmin == 0: 
+                        distmin = dist
+                        posmin = pos
+                    elif distmin > dist: 
+                        distmin = dist
+                        posmin = pos
+                    i = i + 1
+            gatelat, gatelon = gatepos
+            termlat, termlon = posmin
+            brng = self.Bearing(posmin, gatepos)
+            latindex = int(gatelat) - int(self.latmin)
+            lonindex = int(gatelon) - int(self.lonmin)
+            self.lsthnddsf[latindex][lonindex].write("OBJECT 0 %f %f %f\n" % (termlon, termlat, brng))
+        
+  
     def CreateHangars(self):
         for hangar in self.OSMData.lstHangars:
             self.WritePolygon(3, 19, 3, hangar)
@@ -183,6 +247,7 @@ class DSFDataCreator(object):
         
     def WriteDSF(self):
         self.CreateTerminals()
+        self.CreateGates()
         self.CreateHangars()
         self.CreateBldgs()
         self.CreateFences()
