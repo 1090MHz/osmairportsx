@@ -24,6 +24,8 @@ import sys
 import math
 import os
 import shutil
+import copy
+from shapely.geometry import LinearRing, LineString
 
 class XPAPTDataCreator(object):
 
@@ -39,7 +41,6 @@ class XPAPTDataCreator(object):
         self.OurAirportsData = ourairportsdata
         self.OSMAirportsData = osmdata
         self.hndApt = open("apt.dat", "wb")
-        self.debugFile = open("debug.txt", "wb")
         self.path = os.path.join('.', icao)
         self.mkdir(self.path)
         self.path = os.path.join(self.path, 'Earth Nav Data')
@@ -80,10 +81,10 @@ class XPAPTDataCreator(object):
     def FindAccuratePos(self, runway):
         leRunwayNumber = self.OurAirportsData.GetLeRunwayNumber(runway)
         leRunwayPos = self.OurAirportsData.GetLeRunwayPosTuple(runway)
-        leRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(leRunwayNumber, tuple=1)
+        leRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(leRunwayNumber)
         heRunwayNumber = self.OurAirportsData.GetHeRunwayNumber(runway)
         heRunwayPos = self.OurAirportsData.GetHeRunwayPosTuple(runway)
-        heRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(heRunwayNumber, tuple=1)
+        heRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(heRunwayNumber)
         (x1, y1) = leRunwayPos
         (x2, y2) = leRunwayPosOSM
         lePosDistance = math.sqrt((x2-x1)**2+(y2-y1)**2)
@@ -112,26 +113,28 @@ class XPAPTDataCreator(object):
                 tmp = leRunwayPosOSM
                 leRunwayPosOSM = heRunwayPosOSM
                 heRunwayPosOSM = tmp
-            str = "100   %s   %s   2 0.25 %s 0 0 %s   %s    %s    0.00 1  0 0 0 %s   %s    %s    0.00 3  12 0 1\n" % \
-                  (runwayWidthFt, surfaceCode, lighted, leRunwayNumber, leRunwayPosOSM, leDisplacedThresholdFt, heRunwayNumber, \
-                   heRunwayPosOSM, heDisplacedThresholdFt)
+            lelon, lelat = leRunwayPosOSM
+            helon, helat = heRunwayPosOSM
+            str = "100   %s   %s   2 0.25 %s 0 0 %s   %.8f %013.8f    %s    0.00 1  0 0 0 %s   %.8f %013.8f    %s    0.00 3  12 0 1\n" % \
+                  (runwayWidthFt, surfaceCode, lighted, leRunwayNumber, lelat, lelon, leDisplacedThresholdFt, heRunwayNumber, \
+                   helat, helon, heDisplacedThresholdFt)
             self.hndApt.write(str)
             
     def WriteBeaconDefs(self):
-        for lat, lon in self.OSMAirportsData.lstBeacons:
+        for lon, lat in self.OSMAirportsData.lstBeacons:
             self.hndApt.write("18   %.8f %013.8f 1 BCN\n" % (lat, lon))
             
     def FindDistance(self, x1, y1, x2, y2):
         return math.sqrt((x2-x1)**2+(y2-y1)**2)
             
-    def FindClosestRunway(self, lat, lon):
+    def FindClosestRunway(self, lon, lat):
         min = 0
         minrunway = None
         he = 0
         for runway in self.OurAirportsData.lstRunways:
-            lelat, lelon = self.OurAirportsData.GetLeRunwayPosTuple(runway)
-            helat, helon = self.OurAirportsData.GetHeRunwayPosTuple(runway)
-            dist = self.FindDistance(lat, lon, lelat, lelon)
+            lelon, lelat = self.OurAirportsData.GetLeRunwayPosTuple(runway)
+            helon, helat = self.OurAirportsData.GetHeRunwayPosTuple(runway)
+            dist = self.FindDistance(lon, lat, lelon, lelat)
             if min == 0:
                 min = dist
                 minrunway = runway
@@ -139,7 +142,7 @@ class XPAPTDataCreator(object):
                 min = dist
                 he = 0
                 minrunway = runway
-            dist = self.FindDistance(lat, lon, helat, helon)
+            dist = self.FindDistance(lon, lat, helon, helat)
             if min > dist:
                 min = dist
                 he = 1
@@ -154,8 +157,8 @@ class XPAPTDataCreator(object):
         return (runwayNumber, runwayHeading)        
             
     def WritePapiDefs(self):
-        for lat, lon in self.OSMAirportsData.lstPapi:
-            (runwayNumber, runwayHeading) = self.FindClosestRunway(lat, lon)
+        for lon, lat in self.OSMAirportsData.lstPapi:
+            (runwayNumber, runwayHeading) = self.FindClosestRunway(lon, lat)
             self.hndApt.write("21   %.8f %013.8f  2 %.2f   3.00 %s  PAPI\n" % (float(lat), float(lon), float(runwayHeading), runwayNumber))
             
     def OptimizePolygon(self, area):
@@ -174,57 +177,40 @@ class XPAPTDataCreator(object):
         for pavement in self.OSMAirportsData.lstAprons:
             osmid, name, coords = pavement
             self.hndApt.write("\n110   2 0.25  0.00 Apron: %s, OSMID: %s\n" % (name, osmid))
-            #lstArea = self.OptimizePolygon(pavement)
             lstArea = coords
-            for lat, lon in lstArea[:-2]:
+            area = copy.deepcopy(LinearRing(lstArea))
+            if not area.is_ccw:
+                tmparea = list(area.coords)[::-1]
+            else:
+                tmparea = list(area.coords)
+            for lon, lat in tmparea[:-2]:
                 self.hndApt.write("111  %.8f %013.8f\n" % (float(lat), float(lon)))
-            lat, lon = lstArea[-2]
+            lon, lat = tmparea[-2]
             self.hndApt.write("113  %.8f %013.8f\n" % (float(lat), float(lon)))
-            
-    def OffsetLatLoninMeters(self, pos, offsetN, offsetE):
-        (lat, lon) = pos
-        R = 6378137
-        dLat = offsetN/R
-        dLon = offsetE/(R*math.cos(math.pi*lat/180))
-
-        latO = lat + dLat * 180/math.pi
-        lonO = lon + dLon * 180/math.pi 
-        return (latO, lonO)
-        
-    def ResolveOffset(self, pos1, pos2, offset):
-        p1 = pos1
-        p2 = pos2
-        x1, y1 = p1
-        x2, y2 = p2
-        L = math.sqrt((x1-x2)*(x1-x2)+(y1-y2)*(y1-y2))
-        x1off = offset * (y2-y1) / L
-        y1off = offset * (x1-x2) / L
-        pos3 = self.OffsetLatLoninMeters(p1, x1off, y1off)
-        return pos3
-            
+		
     def CalcTaxiArea(self, taxiway, width):
-        i = 0
         lstlPos = []
         lstrPos = []
-        while i+1 < len(taxiway):
-            p1 = taxiway[i]
-            p2 = taxiway[i+1]
-            x1, y1 = p1
-            x2, y2 = p2
-            if self.FindDistance(x1, y1, x2, y2) > 1e-5:
-                lstlPos.append(self.ResolveOffset(taxiway[i], taxiway[i+1], width/2))
-                lstrPos.append(self.ResolveOffset(taxiway[i], taxiway[i+1],  -width/2))
-            i = i + 1
-        p1 = taxiway[-1]
-        p2 = taxiway[-2]
-        x1, y1 = p1
-        x2, y2 = p2
-        if self.FindDistance(x1, y1, x2, y2) > 1e-5:
-            lstlPos.append(self.ResolveOffset(taxiway[-1], taxiway[-2], -width/2))
-            lstrPos.append(self.ResolveOffset(taxiway[-1], taxiway[-2], width/2))
-        while len(lstlPos) > 0:
-            lstrPos.append(lstlPos.pop())
-        return lstrPos
+        centerline = LineString(taxiway)
+        offset = abs(width/2/111132.92)
+        tmp = centerline.parallel_offset(offset, 'left')
+        if tmp.type == 'MultiLineString':
+            for line in tmp.geoms:
+                lstlPos = lstlPos + copy.deepcopy(list(line.coords[:]))
+        else:
+            lstlPos = copy.deepcopy(list(tmp.coords[:]))
+        tmp = centerline.parallel_offset(offset, 'right')
+        if tmp.type == 'MultiLineString':
+            for line in tmp.geoms:
+                lstrPos = lstrPos + copy.deepcopy(list(line.coords[:]))
+        else:
+            lstrPos = copy.deepcopy(list(tmp.coords[:]))
+        area = copy.deepcopy(LinearRing(lstrPos + lstlPos))
+        if not area.is_ccw:
+            retVal = list(area.coords)[::-1]
+        else:
+            retVal = list(area.coords)
+        return copy.deepcopy(retVal)
      
     def WriteTaxiwaySurfaceDefs(self):
         for taxiways in self.OSMAirportsData.lstTaxiways:
@@ -232,9 +218,9 @@ class XPAPTDataCreator(object):
             lstArea = self.CalcTaxiArea(coords, 32)
             surfaceCode = self.GetSurfaceCode(self.taxiway_type)
             self.hndApt.write('\n110   %d 0.25  0.00 Taxiway: %s, OSM ID: %s\n' % (surfaceCode, name, osmid))
-            for lat, lon in lstArea[:-1]:
+            for lon, lat in lstArea[:-1]:
                    self.hndApt.write("111  %.8f %013.8f\n" % (float(lat), float(lon)))
-            (lat, lon) = lstArea[-1]
+            (lon, lat) = lstArea[-1]
             self.hndApt.write("113  %.8f %013.8f\n" % (float(lat), float(lon)))
             
     def WriteServiceRoadDefs(self):
@@ -242,9 +228,9 @@ class XPAPTDataCreator(object):
             osmid, name, coords = roads
             lstArea = self.CalcTaxiArea(coords, 8)
             self.hndApt.write('\n110   %d 0.25  0.00 Service Road: %s, OSM ID: %s\n' % (1, name, osmid))
-            for lat, lon in lstArea[:-1]:
+            for lon, lat in lstArea[:-1]:
                    self.hndApt.write("111  %.8f %013.8f\n" % (float(lat), float(lon)))
-            (lat, lon) = lstArea[-1]
+            (lon, lat) = lstArea[-1]
             self.hndApt.write("113  %.8f %013.8f\n" % (float(lat), float(lon)))
             
     def WriteTaxiwayCenterLineDefs(self):
@@ -255,16 +241,16 @@ class XPAPTDataCreator(object):
         for taxiways in self.OSMAirportsData.lstTaxiways: 
             osmid, name, coords = taxiways
             self.hndApt.write('\n120 Taxiway Center-Line: %s, OSMID: %s\n' % (name, osmid))
-            for lat, lon in coords[:-1]:
+            for lon, lat in coords[:-1]:
                 self.hndApt.write("111  %.8f %013.8f 1 %d\n" % (float(lat), float(lon), lightcode))
-            (lat, lon) = coords[-1]
+            (lon, lat) = coords[-1]
             self.hndApt.write("115  %.8f %013.8f\n" % (float(lat), float(lon)))
             
     def WriteAirportBoundaryDefs(self):
         self.hndApt.write('\n130 Airport Boundary\n')
-        for lat, lon in self.OSMAirportsData.lstBoundaries[:-2]:
+        for lon, lat in self.OSMAirportsData.lstBoundaries[:-2]:
            self.hndApt.write("111  %.8f %013.8f\n" % (float(lat), float(lon)))
-        (lat, lon) = self.OSMAirportsData.lstBoundaries[-2]
+        (lon, lat) = self.OSMAirportsData.lstBoundaries[-2]
         self.hndApt.write("113  %.8f %013.8f\n" % (float(lat), float(lon)))
         
     def WriteFreqDefs(self):
@@ -299,7 +285,6 @@ class XPAPTDataCreator(object):
     def close(self):
         self.hndApt.write('99\n')
         self.hndApt.close()
-        self.debugFile.close()
         shutil.copy('apt.dat', self.path)
         
         

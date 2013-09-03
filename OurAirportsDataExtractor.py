@@ -85,7 +85,7 @@ class OurAirportsDataExtractor(object):
             return("%s" % self.lstAirports[0]['elevation_ft'])
         
     def GetSurfaceCode(self, runway):
-        surfaceCode = '<Unknown surface>'
+        surfaceCode = 1
         if runway['surface'] == 'ASPH-G': surfaceCode = 1
         elif runway['surface'] == 'ASP': surfaceCode = 1
         elif runway['surface'] == 'ASPH-E': surfaceCode = 1
@@ -133,19 +133,13 @@ class OurAirportsDataExtractor(object):
         return("%s" % runway['le_ident'])
         
     def GetLeRunwayPosTuple(self, runway):
-        return(float(runway['le_latitude_deg']), float(runway['le_longitude_deg']))
-        
-    def GetLeRunwayPos(self, runway):
-        return("%.8f %013.8f" % (float(runway['le_latitude_deg']), float(runway['le_longitude_deg'])))
+        return(float(runway['le_longitude_deg']), float(runway['le_latitude_deg']))
         
     def GetHeRunwayNumber(self, runway):
         return("%s" % runway['he_ident'])
         
     def GetHeRunwayPosTuple(self, runway):
-        return(float(runway['he_latitude_deg']), float(runway['he_longitude_deg']))
-        
-    def GetHeRunwayPos(self, runway):
-        return("%.8f %013.8f" % (float(runway['he_latitude_deg']), float(runway['he_longitude_deg'])))
+        return(float(runway['he_longitude_deg']), float(runway['he_latitude_deg']))
         
     def GetLeDisplacementThresholdFt(self, runway):
         return("%.2f" % float(runway['le_displaced_threshold_ft']))

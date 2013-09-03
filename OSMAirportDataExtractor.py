@@ -22,6 +22,7 @@
 #!/usr/bin/env python
 import copy
 import re
+import math
 from imposm.parser import OSMParser
 
 class OSMAirportDataExtractor(object):
@@ -54,8 +55,8 @@ class OSMAirportDataExtractor(object):
         self.ExtractData()
         
     def coords(self, coords):
-        for osm_id, lat, lon in coords:
-            self.lstCoords.append((osm_id, lat, lon))
+        for osm_id, lon, lat in coords:
+            self.lstCoords.append((osm_id, lon, lat))
         
     def nodes(self, nodes):
         for osm_id, tags, position in nodes:
@@ -63,17 +64,15 @@ class OSMAirportDataExtractor(object):
                 for subtags in tags:
                     if tags[subtags] == 'beacon':
                         (lon, lat) = position
-                        self.lstBeacons.append((lat, lon))
+                        self.lstBeacons.append((lon, lat))
             if 'aeroway' in tags:
                 for subtags in tags:
                     if tags[subtags] == 'papi':
                         (lon, lat) = position
-                        self.lstPapi.append((lat, lon))
+                        self.lstPapi.append((lon, lat))
                     if tags[subtags] == 'gate':
                         (lon, lat) = position
-                        self.lstGates.append((lat, lon))
-            #print '%s %.4f %.4f' % (osm_id, lon, lat)
-            #self.coords_list.append(Coords(osm_id, lon, lat))
+                        self.lstGates.append((lon, lat))
 
     def ways(self, ways):
         # callback method for ways
@@ -129,11 +128,11 @@ class OSMAirportDataExtractor(object):
                         self.lstHangarRefs.append(refs)
                         
     def CoordsFromRef(self, ref):
-        return [(lon, lat) for osmid, lat, lon in self.lstCoords if osmid == ref][0]
+        return [(lon, lat) for osmid, lon, lat in self.lstCoords if osmid == ref][0]
         
         
-    def GetRunwayPos(self, runwayNumber, tuple = 0):
-        lat, lon = (0, 0)
+    def GetRunwayPos(self, runwayNumber):
+        lon, lat = (0, 0)
         runwaySuffix = ''
         found = 0
         for tup in self.lstRunwayRefs:
@@ -145,7 +144,7 @@ class OSMAirportDataExtractor(object):
                 runwayNum = int(lenum)
             strRunway = "%02d%s" % (runwayNum, runwaySuffix)
             if strRunway == runwayNumber:
-                lat, lon = self.CoordsFromRef(ref)
+                lon, lat = self.CoordsFromRef(ref)
                 found = 1
                 break
         if found != 1:
@@ -158,19 +157,16 @@ class OSMAirportDataExtractor(object):
                     runwayNum = int(henum)
                 strRunway1 = "%02d%s" % (runwayNum, runwaySuffix)
                 if strRunway1 == runwayNumber:
-                    lat, lon = self.CoordsFromRef(ref1)
+                    lon, lat = self.CoordsFromRef(ref1)
                     found = 1
                     break
         if found != 1:
             sys.exit("Did not find runway %s in OSM or OurAirports Data!  \
                         Either or both of them may be incorrect/outdated. Correct the problem to proceed further" % runwayNumber)
-        if tuple == 1:
-            return(float(lat), float(lon))
-        else:
-            return("%.8f %013.8f" % (float(lat), float(lon)))
+        return(float(lon), float(lat))
         
     def GetLeRunwayPosTuple(self, runwayNumber):
-        lat, lon = (0, 0)
+        lon, lat = (0, 0)
         runwaySuffix = ''
         for tup in self.lstRunwayRefs:
             lenum, ref, henum, ref1 = tup
@@ -180,12 +176,12 @@ class OSMAirportDataExtractor(object):
             strRunway = "%02d%s" % (runwayNum, runwaySuffix)
             print "GetLeRunwayPosTuple", strRunway, runwayNumber
             if strRunway == runwayNumber:
-                lat, lon = self.CoordsFromRef(ref)
+                lon, lat = self.CoordsFromRef(ref)
                 break
-        return(float(lat), float(lon))
+        return(float(lon), float(lat))
         
     def GetLeRunwayPos(self, runwayNumber):
-        lat, lon = (0, 0)
+        lon, lat = (0, 0)
         runwaySuffix = ''
         for tup in self.lstRunwayRefs:
             lenum, ref, henum, ref1 = tup
@@ -194,12 +190,12 @@ class OSMAirportDataExtractor(object):
                 runwaySuffix = lenum[-1]
             strRunway = "%02d%s" % (runwayNum, runwaySuffix)
             if strRunway == runwayNumber:
-                lat, lon = self.CoordsFromRef(ref)
+                lon, lat = self.CoordsFromRef(ref)
                 break
-        return("%.8f %013.8f" % (float(lat), float(lon)))
+        return("%.8f %013.8f" % (float(lon), float(lat)))
         
     def GetHeRunwayPosTuple(self, runwayNumber):
-        lat, lon = (0, 0)
+        lon, lat = (0, 0)
         runwaySuffix = ''
         for tup in self.lstRunwayRefs:
             lenum, ref, henum, ref1 = tup
@@ -212,12 +208,12 @@ class OSMAirportDataExtractor(object):
             strRunway = "%02d%s" % (runwayNum, runwaySuffix)
             print strRunway, runwayNumber
             if strRunway == runwayNumber:
-                lat, lon = self.CoordsFromRef(ref1)
+                lon, lat = self.CoordsFromRef(ref1)
                 break
-        return(float(lat), float(lon))
+        return(float(lon), float(lat))
         
     def GetHeRunwayPos(self, runwayNumber):
-        lat, lon = (0, 0)
+        lon, lat = (0, 0)
         runwaySuffix = ''
         for tup in self.lstRunwayRefs:
             lenum, ref, henum, ref1 = tup
@@ -227,9 +223,9 @@ class OSMAirportDataExtractor(object):
             strRunway = "%02d%s" % (runwayNum, runwaySuffix)
             print "GetHeRunwayPos", strRunway, runwayNumber
             if strRunway == runwayNumber:
-                lat, lon = self.CoordsFromRef(ref1)
+                lon, lat = self.CoordsFromRef(ref1)
                 break
-        return("%.8f %013.8f" % (float(lat), float(lon)))
+        return("%.8f %013.8f" % (float(lon), float(lat)))
         
     def ExtractData(self):
         runway = dict()
@@ -241,6 +237,7 @@ class OSMAirportDataExtractor(object):
             print("Failed!!! File not found.")
             sys.exit(0)
         print "Done.\nExtracting Boundary co-ordinates..."
+        lsttmp = []
         for ref in self.lstBoundaryRefs[0]:
             self.lstBoundaries.append(self.CoordsFromRef(ref))
         print "Done. \nExtracting Runways..."

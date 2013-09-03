@@ -25,6 +25,7 @@ import random
 import math
 import sys
 import os
+from shapely.geometry import LinearRing
 
 class DSFDataCreator(object):
 
@@ -36,13 +37,13 @@ class DSFDataCreator(object):
         self.OSMData = osmdata
         self.bldg_height = bldg_height
         self.terminal_height = terminal_height
-        lat, lon = self.OSMData.lstBoundaries[0]
+        lon, lat = self.OSMData.lstBoundaries[0]
         self.latmin=lat
         self.latmax=lat
         self.lonmin=lon
         self.lonmax=lon
         self.lstfacades = []
-        for lat, lon in self.OSMData.lstBoundaries:
+        for lon, lat in self.OSMData.lstBoundaries:
             if lat < self.latmin: self.latmin = lat
             if lat > self.latmax: self.latmax = lat
             if lon < self.lonmin: self.lonmin = lon
@@ -71,16 +72,14 @@ class DSFDataCreator(object):
                 print 'Failed!!!'
                 sys.exit(0)
                 
-    def WritePolygon(self, arg1, arg2, arg3, lst):
-        wind_dir = self.IdentifyWinding(lst)
-        if wind_dir < 0:
-                lst = lst[::-1]
-        lat, lon = lst[0]
+    def WritePolygon(self, arg1, arg2, arg3, lst1):
+        lst = self.IdentifyWinding(lst1)
+        lon, lat = lst[0]
         latindex = int(lat) - int(self.latmin)
         lonindex = int(lon) - int(self.lonmin)
         self.lsthnddsf[latindex][lonindex].write('BEGIN_POLYGON %s %s %s\n' % (arg1, arg2, arg3))
         self.lsthnddsf[latindex][lonindex].write('BEGIN_WINDING\n')
-        for lat, lon in lst[:-1]:
+        for lon, lat in lst[:-1]:
             self.lsthnddsf[latindex][lonindex].write("POLYGON_POINT %f %f %f\n" % (lon, lat, 0.0))
         self.lsthnddsf[latindex][lonindex].write('END_WINDING\n')
         self.lsthnddsf[latindex][lonindex].write('END_POLYGON\n')
@@ -145,28 +144,27 @@ class DSFDataCreator(object):
             
     """DSFs are required to have counter-clockwise windings for its polygons.
     A simple check to identify if it is indeed so; if not, the caller should reverse the list of polygon nodes"""
-    def IdentifyWinding(self, list):
-        i = 0
-        dir = 0
-        while i+1<len(list):
-            (x1, y1) = list[i]
-            (x2, y2) = list[i+1]
-            dir = dir + (x1+x2)*(y1-y2)
-            i = i + 1
-        return dir
+    def IdentifyWinding(self, lst):
+        if len(lst)<3:
+            return lst
+        area = LinearRing(lst)
+        if not area.is_ccw:
+            retVal = list(area.coords)[::-1]
+        else:
+            retVal = list(area.coords)
+        return retVal
     
     def CreateTerminals(self):
         for terminal in self.OSMData.lstTerminals:
             (min, max) = self.terminal_height
             terminal_index = random.randint(0, 2)
             bldg_height = random.randint(min, max)
-            self.WritePolygon(terminal_index, bldg_height, 3, terminal)
-            
+            self.WritePolygon(terminal_index, bldg_height, 3, terminal)           
             
     def ShortestDistLineAndPt(self, Pt1, Pt2, Pt3):
-        y1, x1 = Pt1
-        y2, x2 = Pt2
-        y3, x3 = Pt3
+        x1, y1 = Pt1
+        x2, y2 = Pt2
+        x3, y3 = Pt3
         dx = float(x2-x1)
         dy = float(y2-y1)
         length = dx*dx + dy*dy
@@ -180,11 +178,11 @@ class DSFDataCreator(object):
         distx = x - x3
         disty = y - y3
         dist = math.sqrt(distx*distx + disty*disty)
-        return (dist, (y, x))
+        return (dist, (x, y))
         
     def Bearing(self, P1,P2):
-        lat1, lon1 = P1
-        lat2, lon2 = P2
+        lon1, lat1 = P1
+        lon2, lat2 = P2
         lat1 = math.radians(lat1)
         lon1 = math.radians(lon1)
         lat2 = math.radians(lat2)
@@ -212,8 +210,8 @@ class DSFDataCreator(object):
                         distmin = dist
                         posmin = pos
                     i = i + 1
-            gatelat, gatelon = gatepos
-            termlat, termlon = posmin
+            gatelon, gatelat = gatepos
+            termlon, termlat = posmin
             brng = self.Bearing(posmin, gatepos)
             latindex = int(gatelat) - int(self.latmin)
             lonindex = int(gatelon) - int(self.lonmin)
