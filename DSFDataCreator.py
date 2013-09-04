@@ -58,7 +58,6 @@ class DSFDataCreator(object):
                 if lat > self.latmax: self.latmax = lat
                 if lon < self.lonmin: self.lonmin = lon
                 if lon > self.lonmax: self.lonmax = lon
-        print self.latmin, self.latmax, self.lonmin, self.lonmax
         self.lsthnddsf = [[0 for i in range(int(self.latmax)-int(self.latmin) + 2)] for i in range(int(self.lonmax)-int(self.lonmin) + 2)]
         self.path = os.path.join('.', icao)
         self.mkdir(self.path)
