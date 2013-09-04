@@ -28,6 +28,9 @@ from DSFDataCreator import DSFDataCreator
 
 usage = "usage: %prog [options] arg1 arg2"
 parser = OptionParser(usage)
+parser.add_option("--Twidth",
+                  action="store", type="float", nargs=1, dest="twidth", default=32,
+                  help="Set width of taxiway (default: 32)")
 parser.add_option("--Ttype",
                   action="store", type="string", dest="taxi_type", default="ASPHALT",
                   help="Set taxiway type (ASPHALT, CONCRETE, GRASS, DIRT, GRAVEL)")
@@ -55,7 +58,7 @@ if __name__ == "__main__":
     OurAirportsData = OurAirportsDataExtractor(icao=args[0])
     OSMAirportsData = OSMAirportDataExtractor(icao=args[0], file=args[1])
     OXpsc = XPAPTDataCreator(args[0], args[1], centerlines=options.taxi_centerlines, 
-                            centerlights=options.taxi_centerlines, taxiway_type=options.taxi_type, 
+                            centerlights=options.taxi_centerlines, taxiway_width=options.twidth, taxiway_type=options.taxi_type, 
                             ourairportsdata = OurAirportsData, osmdata = OSMAirportsData)
     OXpsc.WriteAptDat()
     DSFObject = DSFDataCreator(icao=args[0], osmdata=OXpsc.OSMAirportsData,

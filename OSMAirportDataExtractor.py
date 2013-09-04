@@ -238,9 +238,13 @@ class OSMAirportDataExtractor(object):
             sys.exit(0)
         print "Done.\nExtracting Boundary co-ordinates..."
         lsttmp = []
-        for ref in self.lstBoundaryRefs[0]:
-            self.lstBoundaries.append(self.CoordsFromRef(ref))
-        print "Done. \nExtracting Runways..."
+        if self.lstBoundaryRefs:
+            for ref in self.lstBoundaryRefs[0]:
+                self.lstBoundaries.append(self.CoordsFromRef(ref))
+            print "Done."
+        else:
+            print "No boundaries found...moving on. Please consider adding airport boundaries in OSM"
+        print "Extracting Runways..."
         for ref in self.lstRunwayRefs:
             (name, pos, name1, pos1) = ref
             runway['le_ident'] = name

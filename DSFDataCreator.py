@@ -37,17 +37,28 @@ class DSFDataCreator(object):
         self.OSMData = osmdata
         self.bldg_height = bldg_height
         self.terminal_height = terminal_height
-        lon, lat = self.OSMData.lstBoundaries[0]
+        if self.OSMData.lstBoundaries:
+            lon, lat = self.OSMData.lstBoundaries[0]
+        else:
+            osmid, lon, lat = self.OSMData.lstCoords[0]
         self.latmin=lat
         self.latmax=lat
         self.lonmin=lon
         self.lonmax=lon
         self.lstfacades = []
-        for lon, lat in self.OSMData.lstBoundaries:
-            if lat < self.latmin: self.latmin = lat
-            if lat > self.latmax: self.latmax = lat
-            if lon < self.lonmin: self.lonmin = lon
-            if lon > self.lonmax: self.lonmax = lon
+        if self.OSMData.lstBoundaries:
+            for lon, lat in self.OSMData.lstBoundaries:
+                if lat < self.latmin: self.latmin = lat
+                if lat > self.latmax: self.latmax = lat
+                if lon < self.lonmin: self.lonmin = lon
+                if lon > self.lonmax: self.lonmax = lon
+        else:
+            for osmid, lon, lat in self.OSMData.lstCoords:
+                if lat < self.latmin: self.latmin = lat
+                if lat > self.latmax: self.latmax = lat
+                if lon < self.lonmin: self.lonmin = lon
+                if lon > self.lonmax: self.lonmax = lon
+        print self.latmin, self.latmax, self.lonmin, self.lonmax
         self.lsthnddsf = [[0 for i in range(int(self.latmax)-int(self.latmin) + 2)] for i in range(int(self.lonmax)-int(self.lonmin) + 2)]
         self.path = os.path.join('.', icao)
         self.mkdir(self.path)

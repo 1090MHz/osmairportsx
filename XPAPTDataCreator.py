@@ -29,11 +29,12 @@ from shapely.geometry import LinearRing, LineString
 
 class XPAPTDataCreator(object):
 
-    def __init__(self, icao='', osmfile='', centerlines=False, centerlights=False, taxiway_type="ASPHALT", ourairportsdata=None, osmdata=None):
+    def __init__(self, icao='', osmfile='', centerlines=False, centerlights=False, taxiway_width=32, taxiway_type="ASPHALT", ourairportsdata=None, osmdata=None):
         self.icao=icao
         self.osmfile=osmfile
         self.centerlines=centerlines
         self.centerlights=centerlights
+        self.taxiway_width = taxiway_width
         self.taxiway_type = taxiway_type
         self.lepos = 0
         self.hepos = 0
@@ -215,7 +216,7 @@ class XPAPTDataCreator(object):
     def WriteTaxiwaySurfaceDefs(self):
         for taxiways in self.OSMAirportsData.lstTaxiways:
             osmid, name, coords = taxiways
-            lstArea = self.CalcTaxiArea(coords, 32)
+            lstArea = self.CalcTaxiArea(coords, self.taxiway_width)
             surfaceCode = self.GetSurfaceCode(self.taxiway_type)
             self.hndApt.write('\n110   %d 0.25  0.00 Taxiway: %s, OSM ID: %s\n' % (surfaceCode, name, osmid))
             for lon, lat in lstArea[:-1]:
@@ -247,11 +248,12 @@ class XPAPTDataCreator(object):
             self.hndApt.write("115  %.8f %013.8f\n" % (float(lat), float(lon)))
             
     def WriteAirportBoundaryDefs(self):
-        self.hndApt.write('\n130 Airport Boundary\n')
-        for lon, lat in self.OSMAirportsData.lstBoundaries[:-2]:
-           self.hndApt.write("111  %.8f %013.8f\n" % (float(lat), float(lon)))
-        (lon, lat) = self.OSMAirportsData.lstBoundaries[-2]
-        self.hndApt.write("113  %.8f %013.8f\n" % (float(lat), float(lon)))
+        if self.OSMAirportsData.lstBoundaries:
+            self.hndApt.write('\n130 Airport Boundary\n')
+            for lon, lat in self.OSMAirportsData.lstBoundaries[:-2]:
+               self.hndApt.write("111  %.8f %013.8f\n" % (float(lat), float(lon)))
+            (lon, lat) = self.OSMAirportsData.lstBoundaries[-2]
+            self.hndApt.write("113  %.8f %013.8f\n" % (float(lat), float(lon)))
         
     def WriteFreqDefs(self):
         for freq in self.OurAirportsData.lstAirportFreqs:
