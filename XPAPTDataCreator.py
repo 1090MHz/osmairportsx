@@ -48,19 +48,22 @@ class XPAPTDataCreator(object):
         self.mkdir(self.path)
         
         
-    def GetSurfaceCode(self, surface):
-        if surface == "ASPHALT":
-            surfaceCode = 1
-        elif surface == "CONCRETE":
-            surfaceCode = 2
-        elif surface == "GRASS":
-            surfaceCode = 3
-        elif surface == "DIRT":
-            surfaceCode = 4
-        elif surface == "GRAVEL":
-            surfaceCode = 5
+    def GetSurfaceCode(self, OSMSurface, optionSurface):
+        if OSMSurface == '':
+            if optionSurface == "ASPHALT":
+                surfaceCode = 1
+            elif optionSurface == "CONCRETE":
+                surfaceCode = 2
+            elif optionSurface == "GRASS":
+                surfaceCode = 3
+            elif optionSurface == "DIRT":
+                surfaceCode = 4
+            elif optionSurface == "GRAVEL":
+                surfaceCode = 5
+            else:
+                surfaceCode = 1
         else:
-            surfaceCode = 1
+            surfaceCode = self.OSMAirportsData.GetSurfaceCode(OSMSurface)
         return surfaceCode
         
     def WriteFileHeader(self):
@@ -82,10 +85,10 @@ class XPAPTDataCreator(object):
     def FindAccuratePos(self, runway):
         leRunwayNumber = self.OurAirportsData.GetLeRunwayNumber(runway)
         leRunwayPos = self.OurAirportsData.GetLeRunwayPosTuple(runway)
-        leRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(leRunwayNumber)
+        surface, leRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(leRunwayNumber)
         heRunwayNumber = self.OurAirportsData.GetHeRunwayNumber(runway)
         heRunwayPos = self.OurAirportsData.GetHeRunwayPosTuple(runway)
-        heRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(heRunwayNumber)
+        surface, heRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(heRunwayNumber)
         (x1, y1) = leRunwayPos
         (x2, y2) = leRunwayPosOSM
         lePosDistance = math.sqrt((x2-x1)**2+(y2-y1)**2)
@@ -99,15 +102,14 @@ class XPAPTDataCreator(object):
         
     def WriteRunwayDefs(self):
         for runway in self.OurAirportsData.lstRunways:
-            surfaceCode = self.OurAirportsData.GetSurfaceCode(runway)
             edgeLighting = self.OurAirportsData.GetEdgeLightingCode(runway)
             runwayWidthFt = self.OurAirportsData.GetRunwayWidthFt(runway)
             lighted = self.OurAirportsData.IsRunwayLighted(runway)
             leRunwayNumber = self.OurAirportsData.GetLeRunwayNumber(runway)
-            leRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(leRunwayNumber)
+            surface, leRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(leRunwayNumber)
             leDisplacedThresholdFt = self.OurAirportsData.GetLeDisplacementThresholdFt(runway)
             heRunwayNumber = self.OurAirportsData.GetHeRunwayNumber(runway)
-            heRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(heRunwayNumber)
+            surface, heRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(heRunwayNumber)
             heDisplacedThresholdFt = self.OurAirportsData.GetHeDisplacementThresholdFt(runway)
             retVal = self.FindAccuratePos(runway)
             if retVal == 1:
@@ -116,6 +118,10 @@ class XPAPTDataCreator(object):
                 heRunwayPosOSM = tmp
             lelon, lelat = leRunwayPosOSM
             helon, helat = heRunwayPosOSM
+            if surface == '':
+               surfaceCode = self.OurAirportsData.GetSurfaceCode(runway)
+            else:
+                surfaceCode = self.OSMAirportsData.GetSurfaceCode(surface) 
             str = "100   %s   %s   2 0.25 %s 0 0 %s   %.8f %013.8f    %s    0.00 1  0 0 0 %s   %.8f %013.8f    %s    0.00 3  12 0 1\n" % \
                   (runwayWidthFt, surfaceCode, lighted, leRunwayNumber, lelat, lelon, leDisplacedThresholdFt, heRunwayNumber, \
                    helat, helon, heDisplacedThresholdFt)
@@ -176,8 +182,9 @@ class XPAPTDataCreator(object):
                         
     def WritePavedSurfaceDefs(self):
         for pavement in self.OSMAirportsData.lstAprons:
-            osmid, name, coords = pavement
-            self.hndApt.write("\n110   2 0.25  0.00 Apron: %s, OSMID: %s\n" % (name, osmid))
+            osmid, name, surface, coords = pavement
+            surfaceCode = self.GetSurfaceCode(surface, self.taxiway_type)
+            self.hndApt.write("\n110   %d 0.25  0.00 Apron: %s, OSMID: %s\n" % (surfaceCode, name, osmid))
             lstArea = coords
             area = copy.deepcopy(LinearRing(lstArea))
             if not area.is_ccw:
@@ -215,9 +222,9 @@ class XPAPTDataCreator(object):
      
     def WriteTaxiwaySurfaceDefs(self):
         for taxiways in self.OSMAirportsData.lstTaxiways:
-            osmid, name, coords = taxiways
+            osmid, name, surface, coords = taxiways
             lstArea = self.CalcTaxiArea(coords, self.taxiway_width)
-            surfaceCode = self.GetSurfaceCode(self.taxiway_type)
+            surfaceCode = self.GetSurfaceCode(surface, self.taxiway_type)
             self.hndApt.write('\n110   %d 0.25  0.00 Taxiway: %s, OSM ID: %s\n' % (surfaceCode, name, osmid))
             for lon, lat in lstArea[:-1]:
                    self.hndApt.write("111  %.8f %013.8f\n" % (float(lat), float(lon)))
@@ -240,7 +247,7 @@ class XPAPTDataCreator(object):
         else:
             lightcode = 0
         for taxiways in self.OSMAirportsData.lstTaxiways: 
-            osmid, name, coords = taxiways
+            osmid, name, surface, coords = taxiways
             self.hndApt.write('\n120 Taxiway Center-Line: %s, OSMID: %s\n' % (name, osmid))
             for lon, lat in coords[:-1]:
                 self.hndApt.write("111  %.8f %013.8f 1 %d\n" % (float(lat), float(lon), lightcode))

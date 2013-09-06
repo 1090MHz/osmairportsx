@@ -103,7 +103,11 @@ class OSMAirportDataExtractor(object):
                         if 'name' in tags:
                             runwayName = re.split('/', tags['name'])
                             runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])
-                            self.lstRunwayRefs.append(runwayRefs)
+                            if 'surface' in tags:
+                                surface = tags['surface']
+                            else:
+                                surface = ''
+                            self.lstRunwayRefs.append((surface, runwayRefs))
                     if tags[subtags] == 'taxiway':
                         if 'ref' in tags:
                            name = tags['ref']
@@ -111,13 +115,21 @@ class OSMAirportDataExtractor(object):
                             name = tags['name']
                         else:
                             name = ''
-                        self.lstTaxiwayRefs.append((osmid, name, refs))
+                        if 'surface' in tags:
+                            surface = tags['surface']
+                        else:
+                            surface = ''
+                        self.lstTaxiwayRefs.append((osmid, name, surface, refs))
                     if tags[subtags] == 'apron':
                         if 'name' in tags:
                             name = tags['name']
                         else:
                             name = ''
-                        self.lstApronRefs.append((osmid, name, refs))
+                        if 'surface' in tags:
+                            surface = tags['surface']
+                        else:
+                            surface = ''
+                        self.lstApronRefs.append((osmid, name, surface, refs))
                     if tags[subtags] == 'terminal':
                         if 'name' in tags:
                             name = tags['name']
@@ -130,12 +142,25 @@ class OSMAirportDataExtractor(object):
     def CoordsFromRef(self, ref):
         return [(lon, lat) for osmid, lon, lat in self.lstCoords if osmid == ref][0]
         
-        
+    def GetSurfaceCode(self, surface):
+        surfaceCode = 1
+        if surface == 'asphalt': surfaceCode = 1
+        elif surface == 'concrete': surfaceCode = 2
+        elif surface == 'grass': surfaceCode = 3
+        elif surface == 'dirt': surfaceCode = 4
+        elif surface == 'gravel': surfaceCode = 5
+        elif surface == 'fine_gravel': surfaceCode = 5
+        elif surface == 'sand': surfaceCode = 12 #"""Mapping Sand to Dry lakebed in x-plane"""
+        elif surface == 'water': surfaceCode = 13
+        elif surface == 'ice': surfaceCode = 14
+        elif surface == 'snow': surfaceCode = 14
+        return (surfaceCode)
+   
     def GetRunwayPos(self, runwayNumber):
         lon, lat = (0, 0)
         runwaySuffix = ''
         found = 0
-        for tup in self.lstRunwayRefs:
+        for surface, tup in self.lstRunwayRefs:
             lenum, ref, henum, ref1 = tup
             if lenum.endswith('L') or lenum.endswith('C') or lenum.endswith('R'):
                 runwayNum = int(lenum[:-1])
@@ -148,7 +173,7 @@ class OSMAirportDataExtractor(object):
                 found = 1
                 break
         if found != 1:
-            for tup in self.lstRunwayRefs:
+            for surface, tup in self.lstRunwayRefs:
                 lenum, ref, henum, ref1 = tup
                 if henum.endswith('L') or henum.endswith('C') or henum.endswith('R'):
                     runwayNum = int(henum[:-1])
@@ -163,7 +188,7 @@ class OSMAirportDataExtractor(object):
         if found != 1:
             sys.exit("Did not find runway %s in OSM or OurAirports Data!  \
                         Either or both of them may be incorrect/outdated. Correct the problem to proceed further" % runwayNumber)
-        return(float(lon), float(lat))
+        return((surface, (float(lon), float(lat))))
         
     def GetLeRunwayPosTuple(self, runwayNumber):
         lon, lat = (0, 0)
@@ -245,27 +270,27 @@ class OSMAirportDataExtractor(object):
         else:
             print "No boundaries found...moving on. Please consider adding airport boundaries in OSM"
         print "Extracting Runways..."
-        for ref in self.lstRunwayRefs:
+        for surface, ref in self.lstRunwayRefs:
             (name, pos, name1, pos1) = ref
             runway['le_ident'] = name
             runway['le_pos'] = self.CoordsFromRef(pos)
             runway['he_ident'] = name1
             runway['he_pos'] = self.CoordsFromRef(pos1)
-            self.lstRunways.append(copy.deepcopy(runway))
+            self.lstRunways.append((surface, copy.deepcopy(runway)))
         print "Done.\nExtracting Aprons and paved surfaces..."
         for refs in self.lstApronRefs:
             lsttmp = []
-            osmid, name, aprons = refs
+            osmid, name, surface, aprons = refs
             for apron in aprons:
                 lsttmp.append(self.CoordsFromRef(apron))
-            self.lstAprons.append((osmid, name, copy.deepcopy(lsttmp)))
+            self.lstAprons.append((osmid, name, surface, copy.deepcopy(lsttmp)))
         print "Done.\nExtracting Taxiway segments..."
         for refs in self.lstTaxiwayRefs:
             lsttmp = []
-            osmid, name, taxiways = refs
+            osmid, name, surface, taxiways = refs
             for taxiway in taxiways:
                 lsttmp.append(self.CoordsFromRef(taxiway))
-            self.lstTaxiways.append((osmid, name, copy.deepcopy(lsttmp)))
+            self.lstTaxiways.append((osmid, name, surface, copy.deepcopy(lsttmp)))
         print "Done.\nExtracting Airport Terminals..."
         for refs in self.lstTerminalRefs:
             lsttmp = []
