@@ -142,10 +142,10 @@ class OurAirportsDataExtractor(object):
         return(float(runway['he_longitude_deg']), float(runway['he_latitude_deg']))
         
     def GetLeDisplacementThresholdFt(self, runway):
-        return("%.2f" % float(runway['le_displaced_threshold_ft']))
+        return("%.2f" % (0.3048 * float(runway['le_displaced_threshold_ft'])))
     
     def GetHeDisplacementThresholdFt(self, runway):
-        return("%.2f" % float(runway['he_displaced_threshold_ft']))
+        return("%.2f" % (0.3048 * float(runway['he_displaced_threshold_ft'])))
         
     def GetLeRunwayHeading(self, runway):
         return runway['le_heading_degT']

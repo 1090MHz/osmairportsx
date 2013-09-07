@@ -23,6 +23,7 @@
 import copy
 import re
 import math
+import sys
 from imposm.parser import OSMParser
 
 class OSMAirportDataExtractor(object):
@@ -157,8 +158,6 @@ class OSMAirportDataExtractor(object):
         return (surfaceCode)
    
     def GetRunwayPos(self, runwayNumber):
-        lon, lat = (0, 0)
-        runwaySuffix = ''
         found = 0
         for surface, tup in self.lstRunwayRefs:
             lenum, ref, henum, ref1 = tup
@@ -167,6 +166,7 @@ class OSMAirportDataExtractor(object):
                 runwaySuffix = lenum[-1]
             else:
                 runwayNum = int(lenum)
+                runwaySuffix = ''
             strRunway = "%02d%s" % (runwayNum, runwaySuffix)
             if strRunway == runwayNumber:
                 lon, lat = self.CoordsFromRef(ref)
@@ -180,6 +180,7 @@ class OSMAirportDataExtractor(object):
                     runwaySuffix = henum[-1]
                 else:
                     runwayNum = int(henum)
+                    runwaySuffix = ''
                 strRunway1 = "%02d%s" % (runwayNum, runwaySuffix)
                 if strRunway1 == runwayNumber:
                     lon, lat = self.CoordsFromRef(ref1)
