@@ -101,7 +101,15 @@ class OSMAirportDataExtractor(object):
                     if tags[subtags] == 'aerodrome':
                         self.lstBoundaryRefs.append(refs)
                     if tags[subtags] == 'runway':
-                        if 'name' in tags:
+                        if 'ref' in tags:
+                            runwayName = re.split('/', tags['ref'])
+                            runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])
+                            if 'surface' in tags:
+                                surface = tags['surface']
+                            else:
+                                surface = ''
+                            self.lstRunwayRefs.append((surface, runwayRefs))
+                        elif 'name' in tags:
                             runwayName = re.split('/', tags['name'])
                             runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])
                             if 'surface' in tags:

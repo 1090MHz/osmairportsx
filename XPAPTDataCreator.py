@@ -25,6 +25,7 @@ import math
 import os
 import shutil
 import copy
+import codecs
 from shapely.geometry import LinearRing, LineString
 
 class XPAPTDataCreator(object):
@@ -44,7 +45,7 @@ class XPAPTDataCreator(object):
         print 'Initializing the XPSceneryCreator...'
         self.OurAirportsData = ourairportsdata
         self.OSMAirportsData = osmdata
-        self.hndApt = open("apt.dat", "wb")
+        self.hndApt = codecs.open("apt.dat", "wb", "utf-8")
         self.path = os.path.join('.', icao)
         self.mkdir(self.path)
         self.path = os.path.join(self.path, 'Earth Nav Data')
@@ -94,9 +95,9 @@ class XPAPTDataCreator(object):
         surface, heRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(heRunwayNumber)
         (x1, y1) = leRunwayPos
         (x2, y2) = leRunwayPosOSM
-        lePosDistance = math.sqrt((x2-x1)**2+(y2-y1)**2)
+        lePosDistance = self.FindDistance(x1, y1, x2, y2)
         (x2, y2) = heRunwayPosOSM
-        hePosDistance = math.sqrt((x2-x1)**2+(y2-y1)**2)
+        hePosDistance = self.FindDistance(x1, y1, x2, y2)
         if lePosDistance > hePosDistance:
             print "OSM Co-ordinates for the runway %s/%s are swapped!\nI will swap them back in apt.dat correctly." % (leRunwayNumber, heRunwayNumber)
             print "Please consider correcting the OSM data."
@@ -134,6 +135,14 @@ class XPAPTDataCreator(object):
         for lon, lat in self.OSMAirportsData.lstBeacons:
             self.hndApt.write("18   %.8f %013.8f 1 BCN\n" % (lat, lon))
             
+    def FindLength(self, lst):
+        length = 0
+        if lst:
+            x1, y1 = lst[0]
+            x2, y2 = lst[-1]
+            length = self.FindDistance(x1, y1, x2, y2)
+        return length
+        
     def FindDistance(self, x1, y1, x2, y2):
         return math.sqrt((x2-x1)**2+(y2-y1)**2)
             
@@ -264,13 +273,12 @@ class XPAPTDataCreator(object):
             lightcode = 102
         else:
             lightcode = 0
-        for edgeline in self.lstEdgeLines: 
-            coords = edgeline
-            if coords:
+        for edgeline in self.lstEdgeLines:
+            if edgeline:
                 self.hndApt.write('\n120 Taxiway Edge-Line\n')
-                for lon, lat in coords[:-1]:
+                for lon, lat in edgeline[:-1]:
                     self.hndApt.write("111  %.8f %013.8f 1 %d\n" % (float(lat), float(lon), lightcode))
-                lon, lat = coords[-1]
+                lon, lat = edgeline[-1]
                 self.hndApt.write("115  %.8f %013.8f\n" % (float(lat), float(lon)))
             
     def WriteAirportBoundaryDefs(self):

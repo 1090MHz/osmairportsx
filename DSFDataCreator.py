@@ -25,7 +25,8 @@ import random
 import math
 import sys
 import os
-from shapely.geometry import LinearRing
+import codecs
+from shapely.geometry import LinearRing, LineString, Point
 
 class DSFDataCreator(object):
 
@@ -66,7 +67,7 @@ class DSFDataCreator(object):
         for i in range(int(self.latmax)-int(self.latmin) + 1):
             for j in range(int(self.lonmax)-int(self.lonmin) + 1):
                 self.dsffile = "%+3d%+04d.txt" % (math.floor(self.latmin)+i, math.floor(self.lonmin)+j)
-                self.lsthnddsf[i][j]=open(self.dsffile, "wb")
+                self.lsthnddsf[i][j]=codecs.open(self.dsffile, "wb", "utf-8")
                 self.WriteFileHeader(self.lsthnddsf[i][j], i, j)
                 self.WriteSceneryBoundaries(self.lsthnddsf[i][j], i, j)
                 self.DefineFacadeObjects(self.lsthnddsf[i][j])
