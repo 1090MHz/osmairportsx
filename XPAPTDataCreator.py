@@ -29,15 +29,18 @@ from shapely.geometry import LinearRing, LineString
 
 class XPAPTDataCreator(object):
 
-    def __init__(self, icao='', osmfile='', centerlines=False, centerlights=False, taxiway_width=32, taxiway_type="ASPHALT", ourairportsdata=None, osmdata=None):
+    def __init__(self, icao='', osmfile='', centerlines=False, centerlights=False, edgelines=False, edgelights=False, taxiway_width=32, taxiway_type="ASPHALT", ourairportsdata=None, osmdata=None):
         self.icao=icao
         self.osmfile=osmfile
         self.centerlines=centerlines
         self.centerlights=centerlights
+        self.edgelines=edgelines
+        self.edgelights=edgelights
         self.taxiway_width = taxiway_width
         self.taxiway_type = taxiway_type
         self.lepos = 0
         self.hepos = 0
+        self.lstEdgeLines = []
         print 'Initializing the XPSceneryCreator...'
         self.OurAirportsData = ourairportsdata
         self.OSMAirportsData = osmdata
@@ -218,6 +221,8 @@ class XPAPTDataCreator(object):
             retVal = list(area.coords)[::-1]
         else:
             retVal = list(area.coords)
+        self.lstEdgeLines.append(lstlPos)
+        self.lstEdgeLines.append(lstrPos)
         return copy.deepcopy(retVal)
      
     def WriteTaxiwaySurfaceDefs(self):
@@ -253,6 +258,20 @@ class XPAPTDataCreator(object):
                 self.hndApt.write("111  %.8f %013.8f 1 %d\n" % (float(lat), float(lon), lightcode))
             (lon, lat) = coords[-1]
             self.hndApt.write("115  %.8f %013.8f\n" % (float(lat), float(lon)))
+            
+    def WriteTaxiwayEdgeLineDefs(self):
+        if self.edgelights == True:
+            lightcode = 102
+        else:
+            lightcode = 0
+        for edgeline in self.lstEdgeLines: 
+            coords = edgeline
+            if coords:
+                self.hndApt.write('\n120 Taxiway Edge-Line\n')
+                for lon, lat in coords[:-1]:
+                    self.hndApt.write("111  %.8f %013.8f 1 %d\n" % (float(lat), float(lon), lightcode))
+                lon, lat = coords[-1]
+                self.hndApt.write("115  %.8f %013.8f\n" % (float(lat), float(lon)))
             
     def WriteAirportBoundaryDefs(self):
         if self.OSMAirportsData.lstBoundaries:
@@ -303,7 +322,10 @@ class XPAPTDataCreator(object):
         self.WriteRunwayDefs()
         self.WritePapiDefs()
         self.WriteTaxiwaySurfaceDefs()
-        self.WriteTaxiwayCenterLineDefs()
+        if self.centerlines:
+            self.WriteTaxiwayCenterLineDefs()
+        if self.edgelines:
+            self.WriteTaxiwayEdgeLineDefs()
         self.WriteServiceRoadDefs()
         self.WritePavedSurfaceDefs()
         self.WriteAirportBoundaryDefs()

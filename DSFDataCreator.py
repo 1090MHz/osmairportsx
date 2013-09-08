@@ -145,7 +145,10 @@ class DSFDataCreator(object):
                              ]
         self.lstobjects = ['lib/airport/Ramp_Equipment/Jetway_250cm.obj',
                             'lib/airport/Ramp_Equipment/Jetway_400cm.obj',
-                            'lib/airport/Ramp_Equipment/Jetway_500cm.obj'
+                            'lib/airport/Ramp_Equipment/Jetway_500cm.obj',
+                            'lib/airport/Common_Elements/Lighting/Dir_Ramp_Lit_Med.obj',
+                            'lib/airport/Common_Elements/Lighting/Dir_Ramp_Lit_Tall.obj',
+                            'lib/airport/Common_Elements/Lighting/Ovrhd_Flood_Med.obj'
                             ]
         for object in self.lstobjects:
             hndl.write("OBJECT_DEF %s\n" % object)
@@ -226,6 +229,7 @@ class DSFDataCreator(object):
             latindex = int(gatelat) - int(self.latmin)
             lonindex = int(gatelon) - int(self.lonmin)
             self.lsthnddsf[latindex][lonindex].write("OBJECT 0 %f %f %f\n" % (termlon, termlat, brng))
+            self.lsthnddsf[latindex][lonindex].write("OBJECT 4 %f %f %f\n" % (termlon, termlat, brng))
         
   
     def CreateHangars(self):

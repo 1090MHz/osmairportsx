@@ -40,6 +40,12 @@ parser.add_option("--Tcenterlines",
 parser.add_option("--Tcenterlights",
                   action="store_true", dest="taxi_centerlights", default=False,
                   help="Generate Taxiway centerline lights")
+parser.add_option("--Tedgelines",
+                  action="store_true", dest="taxi_edgelines", default=False,
+                  help="Generate Taxiway edgelines")
+parser.add_option("--Tedgelights",
+                  action="store_true", dest="taxi_edgelights", default=False,
+                  help="Generate Taxiway edge lights")
 parser.add_option("--Bheight",
                   action="store", type="float", nargs=2, dest="bheight", default=(20, 30),
                   help="Set building height range min, max")
@@ -58,8 +64,13 @@ if __name__ == "__main__":
     OurAirportsData = OurAirportsDataExtractor(icao=args[0])
     OSMAirportsData = OSMAirportDataExtractor(icao=args[0], file=args[1])
     OXpsc = XPAPTDataCreator(args[0], args[1], centerlines=options.taxi_centerlines, 
-                            centerlights=options.taxi_centerlines, taxiway_width=options.twidth, taxiway_type=options.taxi_type, 
-                            ourairportsdata = OurAirportsData, osmdata = OSMAirportsData)
+                            centerlights=options.taxi_centerlines, 
+                            edgelines=options.taxi_edgelines, 
+                            edgelights=options.taxi_edgelights, 
+                            taxiway_width=options.twidth, 
+                            taxiway_type=options.taxi_type, 
+                            ourairportsdata = OurAirportsData, 
+                            osmdata = OSMAirportsData)
     OXpsc.WriteAptDat()
     DSFObject = DSFDataCreator(icao=args[0], osmdata=OXpsc.OSMAirportsData,
                                 bldg_height=options.bheight, terminal_height=options.atheight )
