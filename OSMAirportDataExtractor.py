@@ -101,7 +101,7 @@ class OSMAirportDataExtractor(object):
                     if tags[subtags] == 'aerodrome':
                         self.lstBoundaryRefs.append(refs)
                     if tags[subtags] == 'runway':
-                        if 'ref' in tags:
+                        if ('ref' in tags) and ('/' in tags['ref']):
                             runwayName = re.split('/', tags['ref'])
                             runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])
                             if 'surface' in tags:
@@ -109,7 +109,7 @@ class OSMAirportDataExtractor(object):
                             else:
                                 surface = ''
                             self.lstRunwayRefs.append((surface, runwayRefs))
-                        elif 'name' in tags:
+                        elif 'name' in tags and ('/' in tags['name']):
                             runwayName = re.split('/', tags['name'])
                             runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])
                             if 'surface' in tags:
@@ -117,6 +117,8 @@ class OSMAirportDataExtractor(object):
                             else:
                                 surface = ''
                             self.lstRunwayRefs.append((surface, runwayRefs))
+                        else:
+                            sys.exit("Cannot find runways!")
                     if tags[subtags] == 'taxiway':
                         if 'ref' in tags:
                            name = tags['ref']

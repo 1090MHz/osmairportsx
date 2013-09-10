@@ -26,7 +26,7 @@ import os
 import shutil
 import copy
 import codecs
-from shapely.geometry import LinearRing, LineString
+from shapely.geometry import LinearRing, LineString, Point
 
 class XPAPTDataCreator(object):
 
@@ -208,7 +208,35 @@ class XPAPTDataCreator(object):
             lon, lat = tmparea[-2]
             self.hndApt.write("113  %.8f %013.8f\n" % (float(lat), float(lon)))
 		
-    def CalcTaxiArea(self, taxiway, width):
+    def CalcTaxiArea(self, osmid, taxiway, width):
+        lstlPos = []
+        lstrPos = []
+        centerline = LineString(taxiway)
+        offset = abs(width/2/111132.92)
+        tmp = centerline.parallel_offset(offset, 'left')
+        if tmp.type == 'MultiLineString':
+            for line in tmp.geoms:
+                lstlPos = lstlPos + copy.deepcopy(list(line.coords[:]))
+        else:
+            lstlPos = copy.deepcopy(list(tmp.coords[:]))
+        tmp = centerline.parallel_offset(offset, 'right')
+        if tmp.type == 'MultiLineString':
+            for line in tmp.geoms:
+                lstrPos = lstrPos + copy.deepcopy(list(line.coords[:]))
+        else:
+            lstrPos = copy.deepcopy(list(tmp.coords[:]))
+        lstlPos = self.SnapToApron(lstlPos)
+        lstrPos = self.SnapToApron(lstrPos)
+        area = copy.deepcopy(LinearRing(lstrPos + lstlPos))
+        if not area.is_ccw:
+            retVal = list(area.coords)[::-1]
+        else:
+            retVal = list(area.coords)
+        self.lstEdgeLines.append(lstlPos)
+        self.lstEdgeLines.append(lstrPos)
+        return copy.deepcopy(retVal)
+        
+    def CalcServiceRoadArea(self, osmid, taxiway, width):
         lstlPos = []
         lstrPos = []
         centerline = LineString(taxiway)
@@ -230,14 +258,45 @@ class XPAPTDataCreator(object):
             retVal = list(area.coords)[::-1]
         else:
             retVal = list(area.coords)
-        self.lstEdgeLines.append(lstlPos)
-        self.lstEdgeLines.append(lstrPos)
         return copy.deepcopy(retVal)
+                    
+    def SnapToRunway(self, lst):
+        for pt in lst:
+            for runway in self.OSMAirportsData.lstRunways:
+                tmp, dRunway = runway
+                pos1 = dRunway['le_pos']
+                pos2 = dRunway['he_pos']
+                lsCoords = LineString([pos1, pos2])
+                dist = lsCoords.project(Point(pt))
+                ptEndnode = lsCoords.interpolate(dist)
+                x, y = pt
+                x1, y1 = ptEndnode.x, ptEndnode.y
+                dist1 = self.FindDistance(x,y,x1,y1)
+                if dist1 < 2e-4:
+                    if pt in lst:
+                        lst[lst.index(pt)] = (x1, y1)
+        return lst
+        
+    def SnapToApron(self, lst):
+        if len(lst) < 2: return lst
+        for pt in [lst[0], lst[-1]]:
+            for aprons in self.OSMAirportsData.lstAprons:
+                osmid, name, surface, coords = aprons
+                lsCoords = LineString(coords)
+                dist = lsCoords.project(Point(pt))
+                ptEndnode = lsCoords.interpolate(dist)
+                x, y = pt
+                x1, y1 = ptEndnode.x, ptEndnode.y
+                dist1 = self.FindDistance(x,y,x1,y1)
+                if dist1 < 1e-4:
+                    lst[lst.index(pt)] = (x1, y1)
+        return lst
+            
      
     def WriteTaxiwaySurfaceDefs(self):
         for taxiways in self.OSMAirportsData.lstTaxiways:
             osmid, name, surface, coords = taxiways
-            lstArea = self.CalcTaxiArea(coords, self.taxiway_width)
+            lstArea = self.CalcTaxiArea(osmid, coords, self.taxiway_width)
             surfaceCode = self.GetSurfaceCode(surface, self.taxiway_type)
             self.hndApt.write('\n110   %d 0.25  0.00 Taxiway: %s, OSM ID: %s\n' % (surfaceCode, name, osmid))
             for lon, lat in lstArea[:-1]:
@@ -248,7 +307,7 @@ class XPAPTDataCreator(object):
     def WriteServiceRoadDefs(self):
         for roads in self.OSMAirportsData.lstServiceRoads:
             osmid, name, coords = roads
-            lstArea = self.CalcTaxiArea(coords, 8)
+            lstArea = self.CalcServiceRoadArea(osmid, coords, 8)
             self.hndApt.write('\n110   %d 0.25  0.00 Service Road: %s, OSM ID: %s\n' % (1, name, osmid))
             for lon, lat in lstArea[:-1]:
                    self.hndApt.write("111  %.8f %013.8f\n" % (float(lat), float(lon)))
