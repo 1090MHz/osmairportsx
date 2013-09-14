@@ -85,15 +85,16 @@ class DSFDataCreator(object):
                 
     def WritePolygon(self, arg1, arg2, arg3, lst1):
         lst = self.IdentifyWinding(lst1)
-        lon, lat = lst[0]
-        latindex = int(lat) - int(self.latmin)
-        lonindex = int(lon) - int(self.lonmin)
-        self.lsthnddsf[latindex][lonindex].write('BEGIN_POLYGON %s %s %s\n' % (arg1, arg2, arg3))
-        self.lsthnddsf[latindex][lonindex].write('BEGIN_WINDING\n')
-        for lon, lat in lst[:-1]:
-            self.lsthnddsf[latindex][lonindex].write("POLYGON_POINT %f %f %f\n" % (lon, lat, 0.0))
-        self.lsthnddsf[latindex][lonindex].write('END_WINDING\n')
-        self.lsthnddsf[latindex][lonindex].write('END_POLYGON\n')
+        if lst:
+            lon, lat = lst[0]
+            latindex = int(lat) - int(self.latmin)
+            lonindex = int(lon) - int(self.lonmin)
+            self.lsthnddsf[latindex][lonindex].write('BEGIN_POLYGON %s %s %s\n' % (arg1, arg2, arg3))
+            self.lsthnddsf[latindex][lonindex].write('BEGIN_WINDING\n')
+            for lon, lat in lst[:-1]:
+                self.lsthnddsf[latindex][lonindex].write("POLYGON_POINT %f %f %f\n" % (lon, lat, 0.0))
+            self.lsthnddsf[latindex][lonindex].write('END_WINDING\n')
+            self.lsthnddsf[latindex][lonindex].write('END_POLYGON\n')
         
     def WriteFileHeader(self, hndl, i, j):
         if sys.platform == 'darwin':

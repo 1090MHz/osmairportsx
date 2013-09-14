@@ -24,7 +24,7 @@ import copy
 import re
 import math
 import sys
-from imposm.parser import OSMParser
+from lxml import etree
 
 class OSMAirportDataExtractor(object):
     def __init__(self, icao='', file=''):
@@ -55,100 +55,94 @@ class OSMAirportDataExtractor(object):
         self.file = file
         self.ExtractData()
         
-    def coords(self, coords):
-        for osm_id, lon, lat in coords:
+    def coords(self, osmfile):
+        context = etree.iterparse(osmfile, events=('end',), tag='node')
+        for event, elem in context:
+            osm_id=elem.attrib['id']	
+            lat=float(elem.attrib['lat'])
+            lon=float(elem.attrib['lon'])
             self.lstCoords.append((osm_id, lon, lat))
         
-    def nodes(self, nodes):
-        for osm_id, tags, position in nodes:
-            if 'man_made' in tags:
-                for subtags in tags:
-                    if tags[subtags] == 'beacon':
-                        (lon, lat) = position
-                        self.lstBeacons.append((lon, lat))
-            if 'aeroway' in tags:
-                for subtags in tags:
-                    if tags[subtags] == 'papi':
-                        (lon, lat) = position
-                        self.lstPapi.append((lon, lat))
-                    if tags[subtags] == 'gate':
-                        (lon, lat) = position
-                        self.lstGates.append((lon, lat))
+    def nodes(self, osmfile):
+        context = etree.iterparse(osmfile, events=('end',), tag='node')
+        for event, elem in context:
+            osm_id=elem.attrib['id']	
+            lat=float(elem.attrib['lat'])
+            lon=float(elem.attrib['lon'])
+            for c in elem:
+                if c.tag == 'tag':
+                    if c.attrib['k'] == 'aeroway':
+                        if c.attrib['v'] == 'gate':
+                            self.lstGates.append((lon, lat))
+                        elif c.attrib['v'] == 'papi':
+                            self.lstPapi.append((lon, lat))
+                    elif c.attrib['k'] == 'man_made':
+                        if c.attrib['v'] == 'beacon':
+                            self.lstBeacons.append((lon, lat))
 
-    def ways(self, ways):
-        # callback method for ways
-        for osmid, tags, refs in ways:
-            if 'icao' in tags:
-                if tags['icao'] != self.icao:
-                    sys.exit("ICAO code in OSM data different from requested Airport!!!")
-            if 'highway' in tags:
-                for subtags in tags:
-                    if (tags[subtags] == 'service') or (tags[subtags] == 'tertiary'):
-                        if 'name' in tags:
-                            name = tags['name']
-                        else:
-                            name = ''
-                        self.lstServiceRoadRefs.append((osmid, name, refs))
-            if 'building' in tags:
-                if 'aeroway' not in tags or ((tags['aeroway'] != 'terminal') and (tags['aeroway'] != 'hangar')):
-                    self.lstBldgRefs.append(refs)
-            if 'barrier' in tags:
-                for subtags in tags:
-                    if tags[subtags] == 'fence':
+    def ways(self, osmfile):
+        context = etree.iterparse(osmfile, events=('end',), tag='way', encoding='utf-8')
+        for event, elem in context:
+            osmid=elem.attrib['id']    
+            for c in elem:
+                if c.tag == 'tag':
+                    ref = ''
+                    type = ''
+                    name = ''
+                    surface = ''
+                    aeroway = 0
+                    refs=[]
+                    if c.attrib['k'] == 'icao':
+                        if c.attrib['v'] != self.icao:
+                            sys.exit("ICAO code in OSM data different from requested Airport!!!")
+                    elif (c.attrib['k'] == 'highway') and ((c.attrib['v'] == 'service') or (c.attrib['v'] == 'tertiary')):
+                        for nodes in c.getparent():
+                            if nodes.tag == 'tag':
+                                if nodes.attrib['k'] == 'name':
+                                    name = nodes.attrib['v']
+                                elif nodes.attrib['k'] == 'surface':
+                                    surface = nodes.attrib['v']
+                            if nodes.tag == 'nd':
+                                refs.append(nodes.attrib['ref'])
+                        self.lstServiceRoadRefs.append((osmid, name, surface, refs))
+                    elif c.attrib['k'] == 'aeroway':
+                        aeroway = 1
+                        type = c.attrib['v']
+                        for nodes in c.getparent():
+                            if nodes.tag == 'tag':
+                                if nodes.attrib['k'] == 'ref':
+                                    ref = nodes.attrib['v']
+                                if nodes.attrib['k'] == 'name':
+                                    name = nodes.attrib['v']
+                                if nodes.attrib['k'] == 'surface':
+                                    surface = nodes.attrib['v']
+                            if nodes.tag == 'nd':
+                                refs.append(nodes.attrib['ref'])
+                        if type == 'aerodrome': self.lstBoundaryRefs.append(refs)
+                        elif type == 'runway':
+                            if '/' in ref: 
+                                runwayName = re.split('/', ref)
+                            elif '/' in name:
+                                runwayName = re.split('/', name)
+                            runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])  
+                            self.lstRunwayRefs.append((surface, runwayRefs))
+                        elif type == 'taxiway': self.lstTaxiwayRefs.append((osmid, ref, name, surface, refs))
+                        elif type == 'apron': self.lstApronRefs.append((osmid, ref, name, surface, refs))
+                        elif type == 'terminal': self.lstTerminalRefs.append(refs)
+                        elif type == 'hangar': self.lstHangarRefs.append(refs)
+                    elif (c.attrib['k'] == 'building') and (aeroway == 0):
+                        for nodes in c.getparent():
+                            if nodes.tag == 'nd':
+                                refs.append(nodes.attrib['ref'])
+                        self.lstBldgRefs.append(refs)
+                    elif (c.attrib['k'] == 'barrier') and (c.attrib['v'] == 'fence'):
+                        if nodes.tag == 'nd':
+                                refs.append(nodes.attrib['ref'])
                         self.lstFenceRefs.append(refs)
-            if 'aeroway' in tags:
-                for subtags in tags:
-                    if tags[subtags] == 'aerodrome':
-                        self.lstBoundaryRefs.append(refs)
-                    if tags[subtags] == 'runway':
-                        if ('ref' in tags) and ('/' in tags['ref']):
-                            runwayName = re.split('/', tags['ref'])
-                            runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])
-                            if 'surface' in tags:
-                                surface = tags['surface']
-                            else:
-                                surface = ''
-                            self.lstRunwayRefs.append((surface, runwayRefs))
-                        elif 'name' in tags and ('/' in tags['name']):
-                            runwayName = re.split('/', tags['name'])
-                            runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])
-                            if 'surface' in tags:
-                                surface = tags['surface']
-                            else:
-                                surface = ''
-                            self.lstRunwayRefs.append((surface, runwayRefs))
-                        else:
-                            sys.exit("Cannot find runways!")
-                    if tags[subtags] == 'taxiway':
-                        if 'ref' in tags:
-                           name = tags['ref']
-                        elif 'name' in tags:
-                            name = tags['name']
-                        else:
-                            name = ''
-                        if 'surface' in tags:
-                            surface = tags['surface']
-                        else:
-                            surface = ''
-                        self.lstTaxiwayRefs.append((osmid, name, surface, refs))
-                    if tags[subtags] == 'apron':
-                        if 'name' in tags:
-                            name = tags['name']
-                        else:
-                            name = ''
-                        if 'surface' in tags:
-                            surface = tags['surface']
-                        else:
-                            surface = ''
-                        self.lstApronRefs.append((osmid, name, surface, refs))
-                    if tags[subtags] == 'terminal':
-                        if 'name' in tags:
-                            name = tags['name']
-                        else:
-                            name = ''
-                        self.lstTerminalRefs.append((osmid, name, refs))
-                    if tags[subtags] == 'hangar':
-                        self.lstHangarRefs.append(refs)
+            elem.clear()
+
+        while elem.getprevious() is not None:
+                del elem.getparent()[0]
                         
     def CoordsFromRef(self, ref):
         return [(lon, lat) for osmid, lon, lat in self.lstCoords if osmid == ref][0]
@@ -265,13 +259,13 @@ class OSMAirportDataExtractor(object):
         
     def ExtractData(self):
         runway = dict()
-        p = OSMParser(concurrency=4, coords_callback=self.coords, ways_callback=self.ways,  nodes_callback=self.nodes)
         print "Attempting to read %s..." % self.file
         try:
-            p.parse(self.file)
+            self.coords(self.file)
+            self.nodes(self.file)
+            self.ways(self.file)
         except IOError:
-            print("Failed!!! File not found.")
-            sys.exit(0)
+            sys.exit("Failed!!! File not found.")
         print "Done.\nExtracting Boundary co-ordinates..."
         lsttmp = []
         if self.lstBoundaryRefs:
@@ -291,22 +285,21 @@ class OSMAirportDataExtractor(object):
         print "Done.\nExtracting Aprons and paved surfaces..."
         for refs in self.lstApronRefs:
             lsttmp = []
-            osmid, name, surface, aprons = refs
+            osmid, ref, name, surface, aprons = refs
             for apron in aprons:
                 lsttmp.append(self.CoordsFromRef(apron))
             self.lstAprons.append((osmid, name, surface, copy.deepcopy(lsttmp)))
         print "Done.\nExtracting Taxiway segments..."
         for refs in self.lstTaxiwayRefs:
             lsttmp = []
-            osmid, name, surface, taxiways = refs
+            osmid, ref, name, surface, taxiways = refs
             for taxiway in taxiways:
                 lsttmp.append(self.CoordsFromRef(taxiway))
             self.lstTaxiways.append((osmid, name, surface, copy.deepcopy(lsttmp)))
         print "Done.\nExtracting Airport Terminals..."
         for refs in self.lstTerminalRefs:
             lsttmp = []
-            osmid, name, terminals = refs
-            for terminal in terminals:
+            for terminal in refs:
                 lsttmp.append(self.CoordsFromRef(terminal))
             self.lstTerminals.append(copy.deepcopy(lsttmp))
         print "Done.\nExtracting Hangars..."
@@ -333,11 +326,11 @@ class OSMAirportDataExtractor(object):
         print "Done.\nExtracting Service Road segments..."
         for refs in self.lstServiceRoadRefs:
             lsttmp = []
-            osmid, name, roads = refs
+            osmid, name, surface, roads = refs
             for road in roads:
                 coord = self.CoordsFromRef(road)
                 lsttmp.append(coord)
-            self.lstServiceRoads.append((osmid, name, copy.deepcopy(lsttmp)))
+            self.lstServiceRoads.append((osmid, name, surface, copy.deepcopy(lsttmp)))
         print "Number of Runways: %d" % len(self.lstRunwayRefs)
         print "Number of Aprons: %d" % len(self.lstApronRefs)
         print "Number of Terminals: %d" % len(self.lstTerminalRefs)

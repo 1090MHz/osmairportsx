@@ -306,9 +306,10 @@ class XPAPTDataCreator(object):
             
     def WriteServiceRoadDefs(self):
         for roads in self.OSMAirportsData.lstServiceRoads:
-            osmid, name, coords = roads
+            osmid, name, surface, coords = roads
             lstArea = self.CalcServiceRoadArea(osmid, coords, 8)
-            self.hndApt.write('\n110   %d 0.25  0.00 Service Road: %s, OSM ID: %s\n' % (1, name, osmid))
+            surfaceCode = self.GetSurfaceCode(surface, self.taxiway_type)
+            self.hndApt.write('\n110   %d 0.25  0.00 Service Road: %s, OSM ID: %s\n' % (surfaceCode, name, osmid))
             for lon, lat in lstArea[:-1]:
                    self.hndApt.write("111  %.8f %013.8f\n" % (float(lat), float(lon)))
             (lon, lat) = lstArea[-1]
