@@ -65,7 +65,8 @@ class OSMAirportsX(object):
         self.osmfileref = ''
         self.genpath = None
         self.OurAirportsData = None
-        self.last_dir = DirRef(path = os.path.abspath(os.path.dirname(sys.argv[0])))
+        self.last_dir = DirRef(os.path.expanduser("~"))
+        #self.last_dir = DirRef(path = os.path.abspath(os.path.dirname(sys.argv[0])))
         self.genpath = self.last_dir
         """Labels"""
         label = Label(text = "Airport ICAO: ", color = rgb(0.5, 0, 0))
