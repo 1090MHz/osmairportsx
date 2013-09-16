@@ -22,7 +22,6 @@
 #!/usr/bin/env python
 import copy
 import re
-import math
 import sys
 from lxml import etree
 

@@ -20,15 +20,44 @@
 #OF SUCH DAMAGE.
 
 #!/usr/bin/env python
-from optparse import OptionParser
-import os, sys
+import os.path, sys
 from OurAirportsDataExtractor import OurAirportsDataExtractor
 from OSMAirportDataExtractor import OSMAirportDataExtractor
 from XPAPTDataCreator import XPAPTDataCreator
 from DSFDataCreator import DSFDataCreator
-
-from GUI import Window, CheckBox, Button, Label, TextField, rgb, application, FileDialogs, Grid, ListButton
+from GUI import Window, CheckBox, Button, Label, TextField, rgb, application, FileDialogs, Grid, ListButton, Dialog
 from GUI.Files import FileType, DirRef, FileRef
+from GUI.Alerts import stop_alert, note_alert
+from GUI.StdMenus import basic_menus, file_cmds, help_cmds, edit_cmds, print_cmds
+
+class OSMAirportsXWindow(Window):
+
+    def setup_menus(self, m):
+        m.about_cmd.enabled = 1
+        
+    def about_cmd(self):
+        dlog = Dialog(width = 600, height = 400, closable = True)
+        lbl = Label(text = "OSMAirportsX v0.1")
+        lbl1 = Label(text = "by Shankar Giri V.")
+        str = "This software is available under an open-source license. \nVisit https://bitbucket.org/girivs/osmairportsx for more information."
+        lbl2 = Label(text = str)
+        lbl3 = Label(text = "(c) 2013, Shankar Giri V.")
+        lbl4 = Label(text = "This software uses python and third-party modules. Details below: ")
+        lbl5 = Label(text = "lxml")
+        lbl6 = Label(text = "XML and HTML with Python: http://lxml.de")
+        lbl7 = Label(text = "shapely")
+        lbl8 = Label(text = "PostGIS-ish operations outside a database context\n for Pythoneers and Pythonistas. https://pypi.python.org/pypi/Shapely")
+        lbl9 = Label(text = "PyGUI")
+        lbl10 = Label(text = "A cross-platform pythonic GUI API:\n http://www.cosc.canterbury.ac.nz/greg.ewing/python_gui/")
+        dlog.place(lbl, left = 20, top = 20)
+        dlog.place(lbl1, left = 20, top = lbl.bottom + 20)
+        dlog.place(lbl2, left = 20, top = lbl1.bottom + 20)
+        dlog.place(lbl3, left = 20, top = lbl2.bottom + 20)
+        dlog.place(lbl4, left = 20, top = lbl3.bottom + 20)
+        items = [[lbl5, lbl6], [lbl7, lbl8], [lbl9, lbl10]]
+        grid = Grid(items, top = lbl4.bottom + 20, left = 20, width = dlog.width - 40, height = 400)
+        dlog.add(grid)
+        dlog.show()
 
 class OSMAirportsX(object):
     
@@ -37,6 +66,7 @@ class OSMAirportsX(object):
         self.genpath = None
         self.OurAirportsData = None
         self.last_dir = DirRef(path = os.path.abspath(os.path.dirname(sys.argv[0])))
+        self.genpath = self.last_dir
         """Labels"""
         label = Label(text = "Airport ICAO: ", color = rgb(0.5, 0, 0))
         label1 = Label(text = "Taxiway Settings:", color = rgb(0, 0.5, 0))
@@ -59,11 +89,11 @@ class OSMAirportsX(object):
         self.lbl_he_rm = Label(width=100, text = "")
         """Text Fields"""
         self.icao = TextField(width = 100)
-        self.taxi_width = TextField(width = 100, value = 32)
-        self.bldg_height_min = TextField(width = 100, value = 20)
-        self.bldg_height_max = TextField(width = 100, value = 50)
-        self.terminal_height_min = TextField(width = 100, value = 50)
-        self.terminal_height_max = TextField(width = 100, value = 100)
+        self.taxi_width = TextField(width = 100, value = '32')
+        self.bldg_height_min = TextField(width = 100, value = '20')
+        self.bldg_height_max = TextField(width = 100, value = '50')
+        self.terminal_height_min = TextField(width = 100, value = '50')
+        self.terminal_height_max = TextField(width = 100, value = '100')
         """Check Boxes"""
         self.taxi_centerlines = CheckBox(title = "Centerlines", on = 1, width=150)
         self.taxi_centerlights = CheckBox(title = "Centerlights",  on = 1, width=150)
@@ -107,13 +137,13 @@ class OSMAirportsX(object):
         self.he_reil.value = 0
         """Command Buttons"""
         osmfile = Button(width = 150, title = 'Open OSM File', color = rgb(0.5, 0, 0), action = self.open_file)
-        identify = Button(width = 150, title = 'Identify Runways', color = rgb(0.5, 0, 0), action = self.identify_runways)
-        generate = Button(width = 150, title = 'Generate', color = rgb(0.5, 0, 0), action = self.generate)
+        self.btnIdentify = Button(width = 150, title = 'Identify Runways', color = rgb(0.5, 0, 0), action = self.identify_runways, enabled = 0)
+        self.btnGenerate = Button(width = 150, title = 'Generate', color = rgb(0.5, 0, 0), action = self.generate, enabled = 0)
         dirpath = Button(width = 150, title = 'Set Path', color = rgb(0.5, 0, 0), action = self.set_genpath)
         items = [[label, self.icao, osmfile],
                 [label1, None, self.filename],
                 [self.taxi_centerlines, self.taxi_centerlights], [self.taxi_edgelines, self.taxi_edgelights],
-                [label2, self.taxi_width], [label6, identify], [label7, label8], 
+                [label2, self.taxi_width], [label6, self.btnIdentify], [label7, label8], 
                 [self.runwaylist, self.shouldersurface], 
                 [self.centerlights, self.edgelights, self.drs], 
                 [None, label9, label10, label11], 
@@ -122,13 +152,15 @@ class OSMAirportsX(object):
                 [label3], [label4, self.taxisurface], [label5, self.apronsurface], [label12], 
                 [label13, self.bldg_height_min, Label(text="-"), self.bldg_height_max],
                 [label14, self.terminal_height_min, Label(text="-"), self.terminal_height_max],
-                [generate, dirpath]]
+                [self.btnGenerate, dirpath]]
         grid = Grid(items, top = 20, left = 20, width = 780, height = 580)
-        win = Window(width = 800, height =  600, title = "OSMAirportsX")
+        win = OSMAirportsXWindow(width = 800, height =  600, title = "OSMAirportsX", resizable = False, zoomable = False)
         win.add(grid)
         win.add(self.lblgenpath)
-        win.show()   
-        application().run()
+        win.show()
+        app = application() 
+        app.menus = basic_menus(exclude = file_cmds + edit_cmds + print_cmds) 
+        app.run()
     
     def open_file(self):
         file_type = FileType(name = "OSM XML File", suffix = "osm")
@@ -137,9 +169,10 @@ class OSMAirportsX(object):
                 default_dir = self.last_dir, file_types = [file_type, file_type1])
         self.filename.text = self.osmfileref.name
         self.last_dir = self.osmfileref.dir
+        self.btnIdentify.enabled = 1
         
     def set_genpath(self):
-        self.genpath = FileDialogs.request_old_directory("Set Path:", default_dir = self.last_dir)
+        self.genpath = FileDialogs.request_old_directory("Set Path:", default_dir = self.genpath)
         self.lblgenpath.text = self.genpath.path
     
     def update_rwylist(self):
@@ -176,6 +209,10 @@ class OSMAirportsX(object):
         lst = []
         lst1 = []
         self.OurAirportsData = OurAirportsDataExtractor(self.icao.value)
+        if not self.OurAirportsData.lstRunways:
+            self.icao.text = ''
+            stop_alert("ICAO not found in database! Try again.")
+            return
         for runway in self.OurAirportsData.lstRunways:
             lenum = self.OurAirportsData.GetLeRunwayNumber(runway)
             henum = self.OurAirportsData.GetHeRunwayNumber(runway)
@@ -186,11 +223,14 @@ class OSMAirportsX(object):
         self.runwaylist.set_values(lst1)
         self.runwaylist.set_value(lst1[0])
         self.update_rwylist()
+        self.btnGenerate.enabled = 1
+        
         
     def generate(self):
         #p = Process(target=self.execute)
         #p.start()
         self.execute()
+        note_alert('Airport scenery generated.')
         
     def execute(self):
         if not self.genpath:

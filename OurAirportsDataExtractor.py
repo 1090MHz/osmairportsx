@@ -187,7 +187,7 @@ class OurAirportsDataExtractor(object):
         
     def GetLeREILCode(self, runway):
         if 'le_reil' not in runway.keys():
-            runway['le_reil'] = 1
+            runway['le_reil'] = 0
         return runway['le_reil']
         
     def GetLeTDZCode(self, runway):
@@ -207,7 +207,7 @@ class OurAirportsDataExtractor(object):
         
     def GetHeREILCode(self, runway):
         if 'he_reil' not in runway.keys():
-            runway['he_reil'] = 1
+            runway['he_reil'] = 0
         return runway['he_reil']
         
     def GetHeTDZCode(self, runway):
