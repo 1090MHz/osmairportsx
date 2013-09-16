@@ -30,7 +30,9 @@ from shapely.geometry import LinearRing, LineString, Point
 
 class XPAPTDataCreator(object):
 
-    def __init__(self, icao='', osmfile='', centerlines=False, centerlights=False, edgelines=False, edgelights=False, taxiway_width=32, taxiway_type="ASPHALT", ourairportsdata=None, osmdata=None):
+    def __init__(self, icao='', osmfile='', centerlines=False, centerlights=False, 
+                edgelines=False, edgelights=False, taxiway_width=32, taxiway_type="ASPHALT", 
+                apron_type="CONCRETE", ourairportsdata=None, osmdata=None, genpath='.'):
         self.icao=icao
         self.osmfile=osmfile
         self.centerlines=centerlines
@@ -39,14 +41,15 @@ class XPAPTDataCreator(object):
         self.edgelights=edgelights
         self.taxiway_width = taxiway_width
         self.taxiway_type = taxiway_type
+        self.apron_type = apron_type
         self.lepos = 0
         self.hepos = 0
         self.lstEdgeLines = []
-        print 'Initializing the XPSceneryCreator...'
+        print 'Initializing the XPAPTDataCreator...'
         self.OurAirportsData = ourairportsdata
         self.OSMAirportsData = osmdata
         self.hndApt = codecs.open("apt.dat", "wb", "utf-8")
-        self.path = os.path.join('.', icao)
+        self.path = os.path.join(genpath, icao)
         self.mkdir(self.path)
         self.path = os.path.join(self.path, 'Earth Nav Data')
         self.mkdir(self.path)
@@ -54,18 +57,7 @@ class XPAPTDataCreator(object):
         
     def GetSurfaceCode(self, OSMSurface, optionSurface):
         if OSMSurface == '':
-            if optionSurface == "ASPHALT":
-                surfaceCode = 1
-            elif optionSurface == "CONCRETE":
-                surfaceCode = 2
-            elif optionSurface == "GRASS":
-                surfaceCode = 3
-            elif optionSurface == "DIRT":
-                surfaceCode = 4
-            elif optionSurface == "GRAVEL":
-                surfaceCode = 5
-            else:
-                surfaceCode = 1
+            surfaceCode = optionSurface
         else:
             surfaceCode = self.OSMAirportsData.GetSurfaceCode(OSMSurface)
         return surfaceCode
@@ -115,6 +107,19 @@ class XPAPTDataCreator(object):
             heRunwayNumber = self.OurAirportsData.GetHeRunwayNumber(runway)
             surface, heRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(heRunwayNumber)
             heDisplacedThresholdFt = self.OurAirportsData.GetHeDisplacementThresholdFt(runway)
+            shoulderSurface = self.OurAirportsData.GetRunwayShoulderSurface(runway)
+            le_rm = self.OurAirportsData.GetLeRunwayMarkingCode(runway)
+            he_rm = self.OurAirportsData.GetHeRunwayMarkingCode(runway)
+            le_appr_lighting = self.OurAirportsData.GetLeApproachLightingCode(runway)
+            he_appr_lighting = self.OurAirportsData.GetHeApproachLightingCode(runway)
+            le_reil = self.OurAirportsData.GetLeREILCode(runway)
+            he_reil = self.OurAirportsData.GetHeREILCode(runway)
+            le_tdz = int(self.OurAirportsData.GetLeTDZCode(runway))
+            he_tdz = int(self.OurAirportsData.GetHeTDZCode(runway))
+            centerlights = int(self.OurAirportsData.GetRunwayCenterLighting(runway))
+            edgelights = int(self.OurAirportsData.GetRunwayEdgeLighting(runway))
+            if edgelights == 1: edgelights = 2
+            drs = int(self.OurAirportsData.GetRunwayDRS(runway))
             retVal = self.FindAccuratePos(runway)
             if retVal == 1:
                 tmp = leRunwayPosOSM
@@ -126,9 +131,11 @@ class XPAPTDataCreator(object):
                surfaceCode = self.OurAirportsData.GetSurfaceCode(runway)
             else:
                 surfaceCode = self.OSMAirportsData.GetSurfaceCode(surface) 
-            str = "100   %s   %s   2 0.25 %s 0 0 %s   %.8f %013.8f    %s    0.00 1  0 0 0 %s   %.8f %013.8f    %s    0.00 3  12 0 1\n" % \
-                  (runwayWidthFt, surfaceCode, lighted, leRunwayNumber, lelat, lelon, leDisplacedThresholdFt, heRunwayNumber, \
-                   helat, helon, heDisplacedThresholdFt)
+            str = "100   %s   %s   %s 0.25 %s %s %s %s   %.8f %013.8f    %s    0.00 %s  %s %s %s %s   %.8f %013.8f    %s    0.00 %s  %s %s %s\n" % \
+                  (runwayWidthFt, surfaceCode, shoulderSurface, centerlights, edgelights, \
+                  drs, leRunwayNumber, lelat, lelon, leDisplacedThresholdFt, le_rm, \
+                  le_appr_lighting, le_tdz, le_reil, heRunwayNumber, helat, helon, \
+                  heDisplacedThresholdFt, he_rm, he_appr_lighting, he_tdz, he_reil)
             self.hndApt.write(str)
             
     def WriteBeaconDefs(self):
@@ -195,7 +202,7 @@ class XPAPTDataCreator(object):
     def WritePavedSurfaceDefs(self):
         for pavement in self.OSMAirportsData.lstAprons:
             osmid, name, surface, coords = pavement
-            surfaceCode = self.GetSurfaceCode(surface, self.taxiway_type)
+            surfaceCode = self.GetSurfaceCode(surface, self.apron_type)
             self.hndApt.write("\n110   %d 0.25  0.00 Apron: %s, OSMID: %s\n" % (surfaceCode, name, osmid))
             lstArea = coords
             area = copy.deepcopy(LinearRing(lstArea))

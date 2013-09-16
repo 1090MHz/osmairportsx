@@ -32,7 +32,7 @@ class OurAirportsDataExtractor(object):
         self.lstAirportFreqs = []
         self.ExtractDataWithFilter(self.icao)
         
-    def ReturnListFromCSV(self, file='', ident=0, filter='', list='', hit_once=0):
+    def ReturnListFromCSV(self, file='', list='', ident=0, filter='', ex_ident=-1, exclude='', hit_once=0):
         inp = open(file, "rb")
         reader = csv.reader(inp)
         hdrflag = 1
@@ -41,6 +41,8 @@ class OurAirportsDataExtractor(object):
             if hdrflag == 1:
                 header = row
                 hdrflag = 0
+            elif (ex_ident != -1) and (row[ex_ident] == exclude):
+                continue
             elif (row[ident] == filter) or (filter == ''):
                 i = -1
                 try:
@@ -153,6 +155,102 @@ class OurAirportsDataExtractor(object):
     def GetHeRunwayHeading(self, runway):
         return runway['he_heading_degT']
         
+    def GetRunwayCenterLighting(self, runway):
+        if 'center_lighting' not in runway.keys():
+            runway['center_lighting'] = 1
+        return runway['center_lighting']
+        
+    def GetRunwayEdgeLighting(self, runway):
+        if 'edge_lighting' not in runway.keys():
+            runway['edge_lighting'] = 1
+        return runway['edge_lighting']
+        
+    def GetRunwayDRS(self, runway):
+        if 'drs' not in runway.keys():
+            runway['drs'] = 1
+        return runway['drs']
+        
+    def GetRunwayShoulderSurface(self, runway):
+        if 'shoulder' not in runway.keys():
+            runway['shoulder'] = 1
+        return runway['shoulder']
+        
+    def GetLeRunwayMarkingCode(self, runway):
+        if 'le_rm' not in runway.keys():
+            runway['le_rm'] = 3
+        return runway['le_rm']
+    
+    def GetLeApproachLightingCode(self, runway):
+        if 'le_al' not in runway.keys():
+            runway['le_al'] = 12
+        return runway['le_al']
+        
+    def GetLeREILCode(self, runway):
+        if 'le_reil' not in runway.keys():
+            runway['le_reil'] = 1
+        return runway['le_reil']
+        
+    def GetLeTDZCode(self, runway):
+        if 'le_tdz' not in runway.keys():
+            runway['le_tdz'] = 1
+        return runway['le_tdz']
+        
+    def GetHeRunwayMarkingCode(self, runway):
+        if 'he_rm' not in runway.keys():
+            runway['he_rm'] = 3
+        return runway['he_rm']
+    
+    def GetHeApproachLightingCode(self, runway):
+        if 'he_al' not in runway.keys():
+            runway['he_al'] = 12
+        return runway['he_al']
+        
+    def GetHeREILCode(self, runway):
+        if 'he_reil' not in runway.keys():
+            runway['he_reil'] = 1
+        return runway['he_reil']
+        
+    def GetHeTDZCode(self, runway):
+        if 'he_tdz' not in runway.keys():
+            runway['he_tdz'] = 1
+        return runway['he_tdz']
+
+    def SetRunwayCenterLighting(self, runway, cl):
+        runway['center_lighting'] = cl
+        
+    def SetRunwayEdgeLighting(self, runway, el):
+        runway['edge_lighting'] = el
+        
+    def SetRunwayDRS(self, runway, drs):
+        runway['drs'] = drs
+        
+    def SetRunwayShoulderSurface(self, runway, shoulder):
+        runway['shoulder'] = shoulder
+        
+    def SetLeRunwayMarkingCode(self, runway, rm):
+        runway['le_rm'] = rm
+    
+    def SetLeApproachLightingCode(self, runway, al):
+        runway['le_al'] = al
+        
+    def SetLeREILCode(self, runway, reil):
+        runway['le_reil'] = reil
+        
+    def SetLeTDZCode(self, runway, tdz):
+        runway['le_tdz'] = tdz
+        
+    def SetHeRunwayMarkingCode(self, runway, rm):
+        runway['he_rm'] = rm
+    
+    def SetHeApproachLightingCode(self, runway, al):
+        runway['he_al'] = al
+        
+    def SetHeREILCode(self, runway, reil):
+        runway['he_reil'] = reil
+        
+    def SetHeTDZCode(self, runway, tdz):
+        runway['he_tdz'] = tdz
+        
     def ExtractData(self):
         self.ReturnListFromCSV(file='runways.csv', filter='', list=self.lstRunways)
         self.ReturnListFromCSV(file='airports.csv', filter='', list=self.lstAirports)
@@ -160,7 +258,7 @@ class OurAirportsDataExtractor(object):
         
     def ExtractDataWithFilter(self, filter=''):
         print "Extracting data with filter %s..." % filter
-        self.ReturnListFromCSV(file='runways.csv', ident=2, filter=filter, list=self.lstRunways)
-        self.ReturnListFromCSV(file='airports.csv', ident=1, filter=filter, list=self.lstAirports)
-        self.ReturnListFromCSV(file='airport-frequencies.csv', ident=2, filter=filter, list=self.lstAirportFreqs)
+        self.ReturnListFromCSV(file='runways.csv', list=self.lstRunways, ident=2, filter=filter, ex_ident=7, exclude = '1')
+        self.ReturnListFromCSV(file='airports.csv', list=self.lstAirports, ident=1, filter=filter )
+        self.ReturnListFromCSV(file='airport-frequencies.csv', list=self.lstAirportFreqs, ident=2, filter=filter)
     

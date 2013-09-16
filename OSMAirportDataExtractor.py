@@ -124,6 +124,8 @@ class OSMAirportDataExtractor(object):
                                 runwayName = re.split('/', ref)
                             elif '/' in name:
                                 runwayName = re.split('/', name)
+                            else:
+                                continue
                             runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])  
                             self.lstRunwayRefs.append((surface, runwayRefs))
                         elif type == 'taxiway': self.lstTaxiwayRefs.append((osmid, ref, name, surface, refs))

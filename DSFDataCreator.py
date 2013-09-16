@@ -31,7 +31,7 @@ from shapely.geometry import LinearRing, LineString, Point
 class DSFDataCreator(object):
 
     def __init__(self, icao='', osmdata=None, bldg_height = (20, 30), 
-                terminal_height = (30,40)):
+                terminal_height = (30,40), genpath='.'):
         print 'Initializing DSFDataCreator...'
         self.icao = icao
         self.file = file
@@ -60,7 +60,7 @@ class DSFDataCreator(object):
                 if lon < self.lonmin: self.lonmin = lon
                 if lon > self.lonmax: self.lonmax = lon
         self.lsthnddsf = [[0 for i in range(int(self.latmax)-int(self.latmin) + 2)] for i in range(int(self.lonmax)-int(self.lonmin) + 2)]
-        self.path = os.path.join('.', icao)
+        self.path = os.path.join(genpath, icao)
         self.mkdir(self.path)
         self.path = os.path.join(self.path, 'Earth Nav Data')
         self.mkdir(self.path)
