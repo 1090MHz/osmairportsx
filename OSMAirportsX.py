@@ -168,13 +168,15 @@ class OSMAirportsX(object):
         file_type1 = FileType(name = "OSM XML File", suffix = "xml")
         self.osmfileref = FileDialogs.request_old_file("Open OSM File:",
                 default_dir = self.last_dir, file_types = [file_type, file_type1])
-        self.filename.text = self.osmfileref.name
-        self.last_dir = self.osmfileref.dir
-        self.btnIdentify.enabled = 1
+        if self.osmfileref:
+            self.filename.text = self.osmfileref.name
+            self.last_dir = self.osmfileref.dir
+            self.btnIdentify.enabled = 1
         
     def set_genpath(self):
         self.genpath = FileDialogs.request_old_directory("Set Path:", default_dir = self.genpath)
-        self.lblgenpath.text = self.genpath.path
+        if self.genpath:
+            self.lblgenpath.text = self.genpath.path
     
     def update_rwylist(self):
         self.lbl_le_rm.text = self.OurAirportsData.GetLeRunwayNumber(self.runwaylist.value)
@@ -238,7 +240,7 @@ class OSMAirportsX(object):
             path = '.'
         else:
             path = self.genpath.path
-        OSMAirportsData = OSMAirportDataExtractor(self.icao.value, file=self.osmfileref.path)
+        OSMAirportsData = OSMAirportDataExtractor(self.icao.value, file=self.osmfileref.path, ourairportsdata = self.OurAirportsData)
         OXpsc = XPAPTDataCreator(self.icao.value, self.osmfileref, centerlines=self.taxi_centerlines.on, 
                                 centerlights=self.taxi_centerlights.on, 
                                 edgelines=self.taxi_edgelines.on, 

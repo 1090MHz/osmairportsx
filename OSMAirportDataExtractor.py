@@ -23,10 +23,11 @@
 import copy
 import re
 import sys
+import math
 from lxml import etree
 
 class OSMAirportDataExtractor(object):
-    def __init__(self, icao='', file=''):
+    def __init__(self, icao='', file='', ourairportsdata = None):
         print "Initializing OSMAirportDataExtractor..."
         self.icao = icao
         self.lstBoundaryRefs = []
@@ -52,6 +53,7 @@ class OSMAirportDataExtractor(object):
         self.lstBeacons = []
         self.lstPapi = []
         self.file = file
+        self.OurAirportsData = ourairportsdata
         self.ExtractData()
         
     def coords(self, osmfile):
@@ -124,7 +126,7 @@ class OSMAirportDataExtractor(object):
                             elif '/' in name:
                                 runwayName = re.split('/', name)
                             else:
-                                continue
+                                runwayName = self.FindRunwayName((refs[0], refs[-1]))
                             runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])  
                             self.lstRunwayRefs.append((surface, runwayRefs))
                         elif type == 'taxiway': self.lstTaxiwayRefs.append((osmid, ref, name, surface, refs))
@@ -161,6 +163,28 @@ class OSMAirportDataExtractor(object):
         elif surface == 'ice': surfaceCode = 14
         elif surface == 'snow': surfaceCode = 14
         return (surfaceCode)
+        
+    def FindDistance(self, x1, y1, x2, y2):
+        return math.sqrt((x2-x1)**2+(y2-y1)**2)
+        
+    def FindRunwayName(self, refs):
+        min = 0
+        name = ''
+        for runway in self.OurAirportsData.lstRunways:
+            (le, he) = refs
+            reflon, reflat = self.OurAirportsData.GetLeRunwayPosTuple(runway)
+            lelon, lelat = self.CoordsFromRef(le)
+            helon, helat = self.CoordsFromRef(he)
+            dist = self.FindDistance(lelon, lelat, reflon, reflat)
+            dist1 = self.FindDistance(helon, helat, reflon, reflat)
+            if dist1 < dist: dist = dist1
+            if min == 0: 
+                min = dist
+                name = [self.OurAirportsData.GetLeRunwayNumber(runway), self.OurAirportsData.GetHeRunwayNumber(runway)]
+            elif min > dist: 
+                min = dist
+                name = [self.OurAirportsData.GetLeRunwayNumber(runway), self.OurAirportsData.GetHeRunwayNumber(runway)]
+        return name
    
     def GetRunwayPos(self, runwayNumber):
         found = 0
