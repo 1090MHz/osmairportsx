@@ -32,9 +32,14 @@ class OurAirportsDataExtractor(object):
         self.lstAirportFreqs = []
         self.ExtractDataWithFilter(self.icao)
         
+    def unicode_csv_reader(self, utf8_data, dialect=csv.excel, **kwargs):
+        csv_reader = csv.reader(utf8_data, dialect=dialect, **kwargs)
+        for row in csv_reader:
+            yield [unicode(cell, 'utf-8') for cell in row]
+        
     def ReturnListFromCSV(self, file='', list='', ident=0, filter='', ex_ident=-1, exclude='', hit_once=0):
         inp = open(file, "rb")
-        reader = csv.reader(inp)
+        reader = self.unicode_csv_reader(inp)
         hdrflag = 1
         for row in reader:
             # Save header row.

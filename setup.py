@@ -1,6 +1,7 @@
 import sys
 from distutils.core import setup
 
+
 vincludes=[
            'OurAirportsDataExtractor',
            'OSMAirportDataExtractor',
@@ -16,6 +17,17 @@ if sys.platform == 'darwin':
                                       includes=vincludes,
                                       excludes=['numpy', 'scipy', 'matplotlib', 'email'],
                                       packages=['lxml', 'shapely'])))
+    setup(
+        name='OSMAirportsX',
+        app=['OSMAirportsX.py'],
+        data_files=[
+            'airports.csv',
+            'runways.csv',
+            'navaids.csv',
+            'airport-frequencies.csv'
+        ],
+        **extra_options
+    )
 elif sys.platform == 'win32':
     import GUI.py2exe
     import py2exe
@@ -26,16 +38,19 @@ elif sys.platform == 'win32':
                             includes=vincludes,
                             excludes=['numpy', 'scipy', 'matplotlib', 'email'],
                             packages=['lxml', 'shapely'])))
+    setup(
+        name='OSMAirportsX',
+        app=['OSMAirportsX.py'],
+        window=['OSMAirportsX.py'],
+        data_files=[
+            'airports.csv',
+            'runways.csv',
+            'navaids.csv',
+            'airport-frequencies.csv',
+            'geos_c.dll'
+        ],
+        **extra_options
+    )
 
-setup(
-    name='OSMAirportsX',
-    app=['OSMAirportsX.py'],
-    data_files=[
-        'airports.csv',
-        'runways.csv',
-        'navaids.csv',
-        'airport-frequencies.csv'
-    ],
-    **extra_options
-)
+
 
