@@ -297,6 +297,7 @@ class XPAPTDataCreator(object):
                 dist1 = self.FindDistance(x,y,x1,y1)
                 if dist1 < 1e-4:
                     lst[lst.index(pt)] = (x1, y1)
+                    pt = (x1, y1)
         return lst
             
      
