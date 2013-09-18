@@ -139,7 +139,8 @@ class OSMAirportDataExtractor(object):
                                 refs.append(nodes.attrib['ref'])
                         self.lstBldgRefs.append(refs)
                     elif (c.attrib['k'] == 'barrier') and (c.attrib['v'] == 'fence'):
-                        if nodes.tag == 'nd':
+                        for nodes in c.getparent():
+                            if nodes.tag == 'nd':
                                 refs.append(nodes.attrib['ref'])
                         self.lstFenceRefs.append(refs)
             elem.clear()
