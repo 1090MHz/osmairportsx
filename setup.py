@@ -13,7 +13,12 @@ if sys.platform == 'darwin':
     import py2app
     extra_options = dict(
                          setup_requires=['py2app'],
-                         options=dict(py2app=dict(argv_emulation=True,
+                         options=dict(py2app=dict(
+                                      plist = {
+                                                'CFBundleName': 'OSMAirportsX',
+                                                'CFBundleShortVersionString':'0.1.0', # must be in X.X.X format
+                                                'CFBundleVersion': '1.0.0',
+                                                },
                                       includes=vincludes,
                                       excludes=['numpy', 'scipy', 'matplotlib', 'email'],
                                       packages=['lxml', 'shapely'])))
@@ -41,7 +46,7 @@ elif sys.platform == 'win32':
     setup(
         name='OSMAirportsX',
         app=['OSMAirportsX.py'],
-        window=['OSMAirportsX.py'],
+        windows=['OSMAirportsX.py'],
         data_files=[
             'airports.csv',
             'runways.csv',
