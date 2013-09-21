@@ -155,6 +155,10 @@ class XPAPTDataCreator(object):
         for lon, lat in self.OSMAirportsData.lstBeacons:
             self.hndApt.write("18   %.8f %013.8f 1 BCN\n" % (lat, lon))
             
+    def WriteWindsockDefs(self):
+        for lon, lat in self.OSMAirportsData.lstWindsocks:
+            self.hndApt.write("19   %.8f %013.8f 1 WS\n" % (lat, lon))
+            
     def FindLength(self, lst):
         length = 0
         if lst:

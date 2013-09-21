@@ -52,6 +52,7 @@ class OSMAirportDataExtractor(object):
         self.lstServiceRoads = []
         self.lstBeacons = []
         self.lstPapi = []
+        self.lstWindsocks = []
         self.file = file
         self.OurAirportsData = ourairportsdata
         self.ExtractData()
@@ -77,6 +78,8 @@ class OSMAirportDataExtractor(object):
                             self.lstGates.append((lon, lat))
                         elif c.attrib['v'] == 'papi':
                             self.lstPapi.append((lon, lat))
+                        elif c.attrib['v'] == 'windsock':
+                            self.lstWindsocks.append((lon, lat))
                     elif c.attrib['k'] == 'man_made':
                         if c.attrib['v'] == 'beacon':
                             self.lstBeacons.append((lon, lat))

@@ -149,9 +149,8 @@ class DSFDataCreator(object):
         self.lstobjects = ['lib/airport/Ramp_Equipment/Jetway_250cm.obj',
                             'lib/airport/Ramp_Equipment/Jetway_400cm.obj',
                             'lib/airport/Ramp_Equipment/Jetway_500cm.obj',
-                            'lib/airport/Common_Elements/Lighting/Dir_Ramp_Lit_Med.obj',
                             'lib/airport/Common_Elements/Lighting/Dir_Ramp_Lit_Tall.obj',
-                            'lib/airport/Common_Elements/Lighting/Ovrhd_Flood_Med.obj'
+                            'lib/airport/landscape/apron_light.obj'
                             ]
         for object in self.lstobjects:
             hndl.write("OBJECT_DEF %s\n" % object)
@@ -175,7 +174,30 @@ class DSFDataCreator(object):
             (min, max) = self.terminal_height
             terminal_index = random.randint(0, 2)
             bldg_height = random.randint(min, max)
-            self.WritePolygon(terminal_index, bldg_height, 3, terminal)           
+            self.WritePolygon(terminal_index, bldg_height, 3, terminal)  
+            
+    def CreateApronFloodLights(self): 
+        for apron in self.OSMData.lstAprons:
+            skip = 0 
+            osmid, name, surface, coords = apron
+            cent = LinearRing(coords).centroid
+            (lon, lat) = cent.coords[:][0]
+            for terminal in self.OSMData.lstTerminals:
+                tmp = LinearRing(terminal)
+                pos = Point(lon, lat)
+                if tmp.contains(pos):
+                    skip = 1
+                    break
+                dist = LineString(tmp).project(pos)
+                if dist < 1e-4:
+                    skip = 1
+                    break
+            if skip == 0:
+                latindex = int(lat) - int(self.latmin)
+                lonindex = int(lon) - int(self.lonmin)
+                self.lsthnddsf[latindex][lonindex].write("OBJECT 4 %f %f %f\n" % (lon, lat, 0.0))
+                    
+                    
             
     def ShortestDistLineAndPt(self, Pt1, Pt2, Pt3):
         x1, y1 = Pt1
@@ -232,7 +254,7 @@ class DSFDataCreator(object):
             latindex = int(gatelat) - int(self.latmin)
             lonindex = int(gatelon) - int(self.lonmin)
             self.lsthnddsf[latindex][lonindex].write("OBJECT 0 %f %f %f\n" % (termlon, termlat, brng))
-            self.lsthnddsf[latindex][lonindex].write("OBJECT 4 %f %f %f\n" % (termlon, termlat, brng))
+            self.lsthnddsf[latindex][lonindex].write("OBJECT 3 %f %f %f\n" % (termlon, termlat, brng))
         
   
     def CreateHangars(self):
@@ -259,11 +281,3 @@ class DSFDataCreator(object):
                 self.scenery_path = os.path.join(self.path, newdir)
                 self.mkdir(self.scenery_path)
                 shutil.copy(dsffile, self.scenery_path)
-        
-    def WriteDSF(self):
-        self.CreateTerminals()
-        self.CreateGates()
-        self.CreateHangars()
-        self.CreateBldgs()
-        self.CreateFences()
-        self.close()

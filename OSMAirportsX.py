@@ -299,13 +299,21 @@ class OSMAirportsX(object):
         #OXpsc.WriteTransparentSurfaceDefs()
         OXpsc.WriteAirportBoundaryDefs()
         OXpsc.WriteBeaconDefs()
+        OXpsc.WriteWindsockDefs()
         OXpsc.WriteFreqDefs()
         OXpsc.close()
         DSFObject = DSFDataCreator(self.icao.value, osmdata=OXpsc.OSMAirportsData,
                                     bldg_height=(int(self.bldg_height_min.value), int(self.bldg_height_max.value)), 
                                     terminal_height=(int(self.terminal_height_min.value), 
                                     int(self.terminal_height_max.value)), genpath=path)
-        DSFObject.WriteDSF()
+        DSFObject.CreateTerminals()
+        DSFObject.CreateGates()
+        DSFObject.CreateHangars()
+        DSFObject.CreateBldgs()
+        DSFObject.CreateFences()
+        if self.apron_floodlights.on == True:
+            DSFObject.CreateApronFloodLights()
+        DSFObject.close()
         return 0
         
 if __name__ == "__main__":
