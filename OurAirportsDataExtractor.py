@@ -103,7 +103,8 @@ class OurAirportsDataExtractor(object):
         elif runway['surface'] == 'CONC': surfaceCode = 2
         elif runway['surface'] == 'CONC-G': surfaceCode = 2
         elif runway['surface'] == 'CONC-TURF': surfaceCode = 2
-        elif runway['surface'] == 'GRASS': surfaceCode = 3
+        elif runway['surface'].upper() == 'GRASS': surfaceCode = 3
+        elif runway['surface'] == 'GRS': surfaceCode = 3
         elif runway['surface'] == 'TURF': surfaceCode = 3
         elif runway['surface'] == 'TURF-G': surfaceCode = 3
         elif runway['surface'] == 'TURF-F': surfaceCode = 3

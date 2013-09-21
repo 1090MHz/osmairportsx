@@ -189,9 +189,10 @@ class OSMAirportDataExtractor(object):
    
     def GetRunwayPos(self, runwayNumber):
         found = 0
+        lon, lat = (0, 0)
         for surface, tup in self.lstRunwayRefs:
             lenum, ref, henum, ref1 = tup
-            if lenum.endswith('L') or lenum.endswith('C') or lenum.endswith('R'):
+            if lenum.endswith('L') or lenum.endswith('C') or lenum.endswith('R') or lenum.endswith('W'):
                 runwayNum = int(lenum[:-1])
                 runwaySuffix = lenum[-1]
             else:
@@ -205,7 +206,7 @@ class OSMAirportDataExtractor(object):
         if found != 1:
             for surface, tup in self.lstRunwayRefs:
                 lenum, ref, henum, ref1 = tup
-                if henum.endswith('L') or henum.endswith('C') or henum.endswith('R'):
+                if henum.endswith('L') or henum.endswith('C') or henum.endswith('R') or henum.endswith('W'):
                     runwayNum = int(henum[:-1])
                     runwaySuffix = henum[-1]
                 else:
@@ -216,17 +217,14 @@ class OSMAirportDataExtractor(object):
                     lon, lat = self.CoordsFromRef(ref1)
                     found = 1
                     break
-        if found != 1:
-            sys.exit("Did not find runway %s in OSM or OurAirports Data!  \
-                        Either or both of them may be incorrect/outdated. Correct the problem to proceed further" % runwayNumber)
-        return((surface, (float(lon), float(lat))))
+        return((found, surface, (float(lon), float(lat))))
         
     def GetLeRunwayPosTuple(self, runwayNumber):
         lon, lat = (0, 0)
         runwaySuffix = ''
         for tup in self.lstRunwayRefs:
             lenum, ref, henum, ref1 = tup
-            if lenum.endswith('L') or lenum.endswith('C') or lenum.endswith('R'):
+            if lenum.endswith('L') or lenum.endswith('C') or lenum.endswith('R') or lenum.endswith('W'):
                 runwayNum = int(lenum[:-1])
                 runwaySuffix = lenum[-1]
             strRunway = "%02d%s" % (runwayNum, runwaySuffix)
@@ -236,26 +234,12 @@ class OSMAirportDataExtractor(object):
                 break
         return(float(lon), float(lat))
         
-    def GetLeRunwayPos(self, runwayNumber):
-        lon, lat = (0, 0)
-        runwaySuffix = ''
-        for tup in self.lstRunwayRefs:
-            lenum, ref, henum, ref1 = tup
-            if lenum.endswith('L') or lenum.endswith('C') or lenum.endswith('R'):
-                runwayNum = int(lenum[:-1])
-                runwaySuffix = lenum[-1]
-            strRunway = "%02d%s" % (runwayNum, runwaySuffix)
-            if strRunway == runwayNumber:
-                lon, lat = self.CoordsFromRef(ref)
-                break
-        return("%.8f %013.8f" % (float(lon), float(lat)))
-        
     def GetHeRunwayPosTuple(self, runwayNumber):
         lon, lat = (0, 0)
         runwaySuffix = ''
         for tup in self.lstRunwayRefs:
             lenum, ref, henum, ref1 = tup
-            if henum.endswith('L') or henum.endswith('C') or henum.endswith('R'):
+            if henum.endswith('L') or henum.endswith('C') or henum.endswith('R') or henum.endswith('W'):
                 runwayNum = int(henum[:-1])
                 runwaySuffix = henum[-1]
             else:
@@ -267,21 +251,6 @@ class OSMAirportDataExtractor(object):
                 lon, lat = self.CoordsFromRef(ref1)
                 break
         return(float(lon), float(lat))
-        
-    def GetHeRunwayPos(self, runwayNumber):
-        lon, lat = (0, 0)
-        runwaySuffix = ''
-        for tup in self.lstRunwayRefs:
-            lenum, ref, henum, ref1 = tup
-            if henum.endswith('L') or henum.endswith('C') or henum.endswith('R'):
-                runwayNum = int(henum[:-1])
-                runwaySuffix = henum[-1]
-            strRunway = "%02d%s" % (runwayNum, runwaySuffix)
-            print "GetHeRunwayPos", strRunway, runwayNumber
-            if strRunway == runwayNumber:
-                lon, lat = self.CoordsFromRef(ref1)
-                break
-        return("%.8f %013.8f" % (float(lon), float(lat)))
         
     def ExtractData(self):
         runway = dict()
