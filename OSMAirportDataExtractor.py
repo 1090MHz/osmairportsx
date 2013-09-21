@@ -97,6 +97,7 @@ class OSMAirportDataExtractor(object):
                         if c.attrib['v'] != self.icao:
                             sys.exit("ICAO code in OSM data different from requested Airport!!!")
                     elif (c.attrib['k'] == 'highway') and ((c.attrib['v'] == 'service') or (c.attrib['v'] == 'tertiary')):
+                        refs = []
                         for nodes in c.getparent():
                             if nodes.tag == 'tag':
                                 if nodes.attrib['k'] == 'name':
@@ -109,6 +110,7 @@ class OSMAirportDataExtractor(object):
                     elif c.attrib['k'] == 'aeroway':
                         aeroway = 1
                         type = c.attrib['v']
+                        refs = []
                         for nodes in c.getparent():
                             if nodes.tag == 'tag':
                                 if nodes.attrib['k'] == 'ref':
@@ -134,11 +136,13 @@ class OSMAirportDataExtractor(object):
                         elif type == 'terminal': self.lstTerminalRefs.append(refs)
                         elif type == 'hangar': self.lstHangarRefs.append(refs)
                     elif (c.attrib['k'] == 'building') and (aeroway == 0):
+                        refs = []
                         for nodes in c.getparent():
                             if nodes.tag == 'nd':
                                 refs.append(nodes.attrib['ref'])
                         self.lstBldgRefs.append(refs)
                     elif (c.attrib['k'] == 'barrier') and (c.attrib['v'] == 'fence'):
+                        refs = []
                         for nodes in c.getparent():
                             if nodes.tag == 'nd':
                                 refs.append(nodes.attrib['ref'])
@@ -217,6 +221,8 @@ class OSMAirportDataExtractor(object):
                     lon, lat = self.CoordsFromRef(ref1)
                     found = 1
                     break
+        if found != 1:
+            print "Runway %s not found in OSM data!" % (runwayNumber)
         return((found, surface, (float(lon), float(lat))))
         
     def GetLeRunwayPosTuple(self, runwayNumber):
@@ -228,7 +234,6 @@ class OSMAirportDataExtractor(object):
                 runwayNum = int(lenum[:-1])
                 runwaySuffix = lenum[-1]
             strRunway = "%02d%s" % (runwayNum, runwaySuffix)
-            print "GetLeRunwayPosTuple", strRunway, runwayNumber
             if strRunway == runwayNumber:
                 lon, lat = self.CoordsFromRef(ref)
                 break
@@ -246,7 +251,6 @@ class OSMAirportDataExtractor(object):
                 runwayNum = int(henum)
                 runwaySuffix = ''
             strRunway = "%02d%s" % (runwayNum, runwaySuffix)
-            print strRunway, runwayNumber
             if strRunway == runwayNumber:
                 lon, lat = self.CoordsFromRef(ref1)
                 break
@@ -290,7 +294,10 @@ class OSMAirportDataExtractor(object):
             osmid, ref, name, surface, taxiways = refs
             for taxiway in taxiways:
                 lsttmp.append(self.CoordsFromRef(taxiway))
-            self.lstTaxiways.append((osmid, name, surface, copy.deepcopy(lsttmp)))
+            x1, y1 = lsttmp[0]
+            x2, y2 = lsttmp[-1]
+            dist = self.FindDistance(x1, y1, x2, y2)
+            self.lstTaxiways.append((osmid, name, surface, dist, copy.deepcopy(lsttmp)))
         print "Done.\nExtracting Airport Terminals..."
         for refs in self.lstTerminalRefs:
             lsttmp = []

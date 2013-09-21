@@ -84,6 +84,7 @@ class OSMAirportsX(object):
         label12 = Label(text = "DSF Settings:", color = rgb(0, 0.5, 0))
         label13 = Label(text = "Building Heights")
         label14 = Label(text = "Terminal Heights")
+        label15 = Label(text = "Apron Settings:", color = rgb(0, 0.5, 0))
         self.lblgenpath = Label(text = "Generation Path: ", width=400)
         self.filename = Label(text = "Filename: ", width = 150) 
         self.lbl_le_rm = Label(width=100, text = "")
@@ -100,6 +101,8 @@ class OSMAirportsX(object):
         self.taxi_centerlights = CheckBox(title = "Centerlights",  on = 1, width=150)
         self.taxi_edgelines = CheckBox(title = "Edgelines", on = 1, width=150)
         self.taxi_edgelights = CheckBox(title = "Edgelights", on = 1, width=150)
+        self.apron_perimeterlights = CheckBox(title = "Perimeter Lights", on = 0, width=150)
+        self.apron_floodlights = CheckBox(title = "Flood Lights", on = 0, width=150)
         self.centerlights = CheckBox(title = "Centerlights",  on = 1, action=self.update_fields, width=150)
         self.edgelights = CheckBox(title = "Edgelights",  on = 1, action=self.update_fields, width=150)
         self.drs = CheckBox(title = "Distance signs",  on = 1, action=self.update_fields, width=150)
@@ -141,9 +144,10 @@ class OSMAirportsX(object):
         self.btnIdentify = Button(width = 150, title = 'Identify Runways', color = rgb(0.5, 0, 0), action = self.identify_runways, enabled = 0)
         self.btnGenerate = Button(width = 150, title = 'Generate', color = rgb(0.5, 0, 0), action = self.generate, enabled = 0)
         dirpath = Button(width = 150, title = 'Set Path', color = rgb(0.5, 0, 0), action = self.set_genpath)
-        items = [[label, self.icao, osmfile],
-                [label1, None, self.filename],
-                [self.taxi_centerlines, self.taxi_centerlights], [self.taxi_edgelines, self.taxi_edgelights],
+        items = [[label, self.icao, osmfile, self.filename],
+                [label1, None, label15],
+                [self.taxi_centerlines, self.taxi_centerlights, self.apron_perimeterlights], 
+                [self.taxi_edgelines, self.taxi_edgelights, self.apron_floodlights],
                 [label2, self.taxi_width], [label6, self.btnIdentify], [label7, label8], 
                 [self.runwaylist, self.shouldersurface], 
                 [self.centerlights, self.edgelights, self.drs], 
@@ -181,6 +185,32 @@ class OSMAirportsX(object):
     def update_rwylist(self):
         self.lbl_le_rm.text = self.OurAirportsData.GetLeRunwayNumber(self.runwaylist.value)
         self.lbl_he_rm.text = self.OurAirportsData.GetHeRunwayNumber(self.runwaylist.value)
+        if self.lbl_he_rm.text[-1] == 'W' or self.lbl_le_rm.text[-1] == 'W':
+            self.le_rm.enabled = 0
+            self.he_rm.enabled = 0
+            self.shouldersurface.enabled = 0
+            self.le_appr_lighting.enabled = 0
+            self.he_appr_lighting.enabled = 0
+            self.le_reil.enabled = 0
+            self.he_reil.enabled = 0
+            self.le_tdz.enabled = 0
+            self.he_tdz.enabled = 0
+            self.centerlights.enabled = 0
+            self.edgelights.enabled = 0
+            self.drs.enabled = 0
+        else:
+            self.le_rm.enabled = 1
+            self.he_rm.enabled = 1
+            self.shouldersurface.enabled = 1
+            self.le_appr_lighting.enabled = 1
+            self.he_appr_lighting.enabled = 1
+            self.le_reil.enabled = 1
+            self.he_reil.enabled = 1
+            self.le_tdz.enabled = 1
+            self.he_tdz.enabled = 1
+            self.centerlights.enabled = 1
+            self.edgelights.enabled = 1
+            self.drs.enabled = 1
         self.shouldersurface.value = self.OurAirportsData.GetRunwayShoulderSurface(self.runwaylist.value)
         self.le_rm.value = self.OurAirportsData.GetLeRunwayMarkingCode(self.runwaylist.value)
         self.he_rm.value = self.OurAirportsData.GetHeRunwayMarkingCode(self.runwaylist.value)
@@ -232,8 +262,9 @@ class OSMAirportsX(object):
     def generate(self):
         #p = Process(target=self.execute)
         #p.start()
-        self.execute()
-        note_alert('Airport scenery generated.')
+        retVal = self.execute()
+        if retVal == 0:
+            note_alert('Airport scenery generated.')
         
     def execute(self):
         if not self.genpath:
@@ -248,15 +279,37 @@ class OSMAirportsX(object):
                                 taxiway_width=int(self.taxi_width.value), 
                                 taxiway_type=self.taxisurface.value,
                                 apron_type=self.apronsurface.value,
+                                apron_perimeterlights=self.apron_perimeterlights.on,
+                                apron_floodlights=self.apron_floodlights.on,
                                 ourairportsdata = self.OurAirportsData, 
                                 osmdata = OSMAirportsData, genpath = path)
-        OXpsc.WriteAptDat()
+        OXpsc.WriteFileHeader()
+        OXpsc.WriteAPTHeader()
+        retVal = OXpsc.WriteRunwayDefs()
+        if retVal == -1:
+            stop_alert("Did not find runway in OSM Data!  \
+                        May be incorrect/outdated. Correct the problem to proceed further")
+            return -1
+        OXpsc.WritePapiDefs()
+        OXpsc.WriteTaxiwaySurfaceDefs()
+        if OXpsc.centerlines:
+            OXpsc.WriteTaxiwayCenterLineDefs()
+        #if OXpsc.edgelines:
+        #    OXpsc.WriteTaxiwayEdgeLineDefs()
+        OXpsc.WriteServiceRoadDefs()
+        OXpsc.WritePavedSurfaceDefs()
+        #OXpsc.WriteTransparentSurfaceDefs()
+        OXpsc.WriteAirportBoundaryDefs()
+        OXpsc.WriteBeaconDefs()
+        OXpsc.WriteFreqDefs()
+        OXpsc.close()
         DSFObject = DSFDataCreator(self.icao.value, osmdata=OXpsc.OSMAirportsData,
                                     bldg_height=(int(self.bldg_height_min.value), int(self.bldg_height_max.value)), 
                                     terminal_height=(int(self.terminal_height_min.value), 
                                     int(self.terminal_height_max.value)), genpath=path)
         DSFObject.WriteDSF()
-
+        return 0
+        
 if __name__ == "__main__":
     OSMAirportsX()
 

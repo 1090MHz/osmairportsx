@@ -83,8 +83,9 @@ class DSFDataCreator(object):
                 print 'Failed!!!'
                 sys.exit(0)
                 
-    def WritePolygon(self, arg1, arg2, arg3, lst1):
-        lst = self.IdentifyWinding(lst1)
+    def WritePolygon(self, arg1, arg2, arg3, lst, cw=True):
+        if cw == True:
+            lst = self.IdentifyWinding(lst)
         if lst:
             lon, lat = lst[0]
             latindex = int(lat) - int(self.latmin)
@@ -247,7 +248,7 @@ class DSFDataCreator(object):
 
     def CreateFences(self):
         for fence in self.OSMData.lstFences:
-            self.WritePolygon(5, 50, 3, fence)
+            self.WritePolygon(5, 50, 3, fence, cw=False)
         
     def close(self):
         for i in range(int(self.latmax)-int(self.latmin) + 1):
