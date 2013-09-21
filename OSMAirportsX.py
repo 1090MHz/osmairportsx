@@ -161,7 +161,7 @@ class OSMAirportsX(object):
         grid = Grid(items, top = 20, left = 20, width = 780, height = 580)
         win = OSMAirportsXWindow(width = 800, height =  600, title = "OSMAirportsX", resizable = False, zoomable = False)
         win.add(grid)
-        win.add(self.lblgenpath)
+        win.place(self.lblgenpath, left = dirpath.right + 20, top = dirpath.bottom)
         win.show()
         app = application() 
         app.menus = basic_menus(exclude = file_cmds + edit_cmds + print_cmds) 
