@@ -37,7 +37,7 @@ class OSMAirportsXWindow(Window):
         
     def about_cmd(self):
         dlog = Dialog(width = 600, height = 400, closable = True)
-        lbl = Label(text = "OSMAirportsX v0.1")
+        lbl = Label(text = "OSMAirportsX v1.0")
         lbl1 = Label(text = "by Shankar Giri V.")
         str = "This software is available under an open-source license. \nVisit https://bitbucket.org/girivs/osmairportsx for more information."
         lbl2 = Label(text = str)
@@ -294,8 +294,6 @@ class OSMAirportsX(object):
         OXpsc.WriteTaxiwaySurfaceDefs()
         if OXpsc.centerlines:
             OXpsc.WriteTaxiwayCenterLineDefs()
-        #if OXpsc.edgelines:
-        #    OXpsc.WriteTaxiwayEdgeLineDefs()
         OXpsc.WriteServiceRoadDefs()
         OXpsc.WritePavedSurfaceDefs()
         #OXpsc.WriteTransparentSurfaceDefs()
