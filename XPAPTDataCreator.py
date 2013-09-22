@@ -141,7 +141,6 @@ class XPAPTDataCreator(object):
             if surfaceCode == 13: #Water runway
                 str = "101   %s   1   %s   %.8f %013.8f %s   %.8f %013.8f\n" % \
                       (runwayWidthFt, leRunwayNumber, lelat, lelon, heRunwayNumber, helat, helon)
-
             else:
                 str = "100   %s   %s   %s 0.25 %s %s %s %s   %.8f %013.8f    %s    0.00 %s  %s %s %s %s   %.8f %013.8f    %s    0.00 %s  %s %s %s\n" % \
                       (runwayWidthFt, surfaceCode, shoulderSurface, centerlights, edgelights, \
@@ -149,7 +148,7 @@ class XPAPTDataCreator(object):
                       le_appr_lighting, le_tdz, le_reil, heRunwayNumber, helat, helon, \
                       heDisplacedThresholdFt, he_rm, he_appr_lighting, he_tdz, he_reil)
             self.hndApt.write(str)
-            return 0
+        return 0
             
     def WriteBeaconDefs(self):
         for lon, lat in self.OSMAirportsData.lstBeacons:
