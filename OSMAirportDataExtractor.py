@@ -25,6 +25,7 @@ import re
 import sys
 import math
 from lxml import etree
+import utm as UTM
 
 class OSMAirportDataExtractor(object):
     def __init__(self, icao='', file='', ourairportsdata = None):
@@ -53,24 +54,38 @@ class OSMAirportDataExtractor(object):
         self.lstBeacons = []
         self.lstPapi = []
         self.lstWindsocks = []
+        self.use_itm = True
+        self.lstZones = []
         self.file = file
         self.OurAirportsData = ourairportsdata
-        self.ExtractData()
-        
+
     def coords(self, osmfile):
         context = etree.iterparse(osmfile, events=('end',), tag='node')
         for event, elem in context:
-            osm_id=elem.attrib['id']	
+            osm_id=elem.attrib['id']
             lat=float(elem.attrib['lat'])
             lon=float(elem.attrib['lon'])
-            self.lstCoords.append((osm_id, lon, lat))
-        
+
+            if self.use_itm:
+              utm = UTM.from_latlon(lat,lon)
+              self.lstZones.append(utm[2:])
+              self.lstCoords.append((osm_id, utm[0], utm[1]))
+            else:
+              self.lstCoords.append((osm_id, lon, lat))
+
     def nodes(self, osmfile):
         context = etree.iterparse(osmfile, events=('end',), tag='node')
         for event, elem in context:
-            osm_id=elem.attrib['id']	
+            osm_id=elem.attrib['id']
             lat=float(elem.attrib['lat'])
             lon=float(elem.attrib['lon'])
+
+            if self.use_itm:
+              utm = UTM.from_latlon(lat,lon)
+              self.lstZones.append(utm[2:])
+              lon = utm[0]
+              lat = utm[1]
+
             for c in elem:
                 if c.tag == 'tag':
                     if c.attrib['k'] == 'aeroway':
@@ -85,6 +100,7 @@ class OSMAirportDataExtractor(object):
                             self.lstBeacons.append((lon, lat))
 
     def ways(self, osmfile):
+        retVal = 0
         context = etree.iterparse(osmfile, events=('end',), tag='way', encoding='utf-8')
         for event, elem in context:
             osmid=elem.attrib['id']    
@@ -126,14 +142,22 @@ class OSMAirportDataExtractor(object):
                                 refs.append(nodes.attrib['ref'])
                         if type == 'aerodrome': self.lstBoundaryRefs.append(refs)
                         elif type == 'runway':
-                            if '/' in ref: 
+                            if '/' in ref:
                                 runwayName = re.split('/', ref)
                             elif '/' in name:
                                 runwayName = re.split('/', name)
+                            elif '-' in ref:
+                                runwayName = re.split('-', ref)
+                            elif '-' in name:
+                                runwayName = re.split('-', name)
                             else:
-                                runwayName = self.FindRunwayName((refs[0], refs[-1]))
-                            runwayRefs = (runwayName[0], refs[0], runwayName[1], refs[-1])  
-                            self.lstRunwayRefs.append((surface, runwayRefs))
+                                if refs:
+                                    runwayName = self.FindRunwayName((refs[0], refs[-1]))
+                                else:
+                                    retVal = -1
+                            if refs:
+                                runwayRefs = (runwayName[0].strip(), refs[0], runwayName[1].strip(), refs[-1])
+                                self.lstRunwayRefs.append((surface, runwayRefs))
                         elif type == 'taxiway': self.lstTaxiwayRefs.append((osmid, ref, name, surface, refs))
                         elif type == 'apron': self.lstApronRefs.append((osmid, ref, name, surface, refs))
                         elif type == 'terminal': self.lstTerminalRefs.append(refs)
@@ -154,7 +178,8 @@ class OSMAirportDataExtractor(object):
 
         while elem.getprevious() is not None:
                 del elem.getparent()[0]
-                        
+        return retVal
+
     def CoordsFromRef(self, ref):
         return [(lon, lat) for osmid, lon, lat in self.lstCoords if osmid == ref][0]
         
@@ -186,14 +211,14 @@ class OSMAirportDataExtractor(object):
             dist = self.FindDistance(lelon, lelat, reflon, reflat)
             dist1 = self.FindDistance(helon, helat, reflon, reflat)
             if dist1 < dist: dist = dist1
-            if min == 0: 
+            if min == 0:
                 min = dist
                 name = [self.OurAirportsData.GetLeRunwayNumber(runway), self.OurAirportsData.GetHeRunwayNumber(runway)]
             elif min > dist: 
                 min = dist
                 name = [self.OurAirportsData.GetLeRunwayNumber(runway), self.OurAirportsData.GetHeRunwayNumber(runway)]
         return name
-   
+
     def GetRunwayPos(self, runwayNumber):
         found = 0
         lon, lat = (0, 0)
@@ -227,7 +252,7 @@ class OSMAirportDataExtractor(object):
         if found != 1:
             print "Runway %s not found in OSM data!" % (runwayNumber)
         return((found, surface, (float(lon), float(lat))))
-        
+
     def GetLeRunwayPosTuple(self, runwayNumber):
         lon, lat = (0, 0)
         runwaySuffix = ''
@@ -258,14 +283,22 @@ class OSMAirportDataExtractor(object):
                 lon, lat = self.CoordsFromRef(ref1)
                 break
         return(float(lon), float(lat))
-        
+
+    def GetUseItm(self):
+      return self.use_itm
+
+    def GetZones(self):
+      return self.lstZones
+
     def ExtractData(self):
         runway = dict()
         print "Attempting to read %s..." % self.file
         try:
             self.coords(self.file)
             self.nodes(self.file)
-            self.ways(self.file)
+            retval = self.ways(self.file)
+            if retval == -1:
+                return -1
         except IOError:
             sys.exit("Failed!!! File not found.")
         print "Done.\nExtracting Boundary co-ordinates..."
@@ -297,10 +330,11 @@ class OSMAirportDataExtractor(object):
             osmid, ref, name, surface, taxiways = refs
             for taxiway in taxiways:
                 lsttmp.append(self.CoordsFromRef(taxiway))
-            x1, y1 = lsttmp[0]
-            x2, y2 = lsttmp[-1]
-            dist = self.FindDistance(x1, y1, x2, y2)
-            self.lstTaxiways.append((osmid, name, surface, dist, copy.deepcopy(lsttmp)))
+            if lsttmp:
+              x1, y1 = lsttmp[0]
+              x2, y2 = lsttmp[-1]
+              dist = self.FindDistance(x1, y1, x2, y2)
+              self.lstTaxiways.append((osmid, name, surface, dist, copy.deepcopy(lsttmp)))
         print "Done.\nExtracting Airport Terminals..."
         for refs in self.lstTerminalRefs:
             lsttmp = []
@@ -345,4 +379,6 @@ class OSMAirportDataExtractor(object):
         print "Number of Buildings: %d" % len(self.lstBldgRefs)
         print "Number of Fence Segments: %d" % len(self.lstFenceRefs)
         print "Number of Service Road Segments: %d" % len(self.lstServiceRoadRefs)
+        print "Number of UTM zones: %d " % len(list(set(self.lstZones)))
+        return 0
 

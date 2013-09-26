@@ -36,8 +36,8 @@ class OSMAirportsXWindow(Window):
         m.about_cmd.enabled = 1
         
     def about_cmd(self):
-        dlog = Dialog(width = 600, height = 400, closable = True)
-        lbl = Label(text = "OSMAirportsX v1.0.1")
+        dlog = Dialog(width = 600, height = 480, closable = True)
+        lbl = Label(text = "OSMAirportsX v1.1")
         lbl1 = Label(text = "by Shankar Giri V.")
         str = "This software is available under an open-source license. \nVisit https://bitbucket.org/girivs/osmairportsx for more information."
         lbl2 = Label(text = str)
@@ -46,14 +46,22 @@ class OSMAirportsXWindow(Window):
         lbl5 = Label(text = "lxml")
         lbl6 = Label(text = "XML and HTML with Python: http://lxml.de")
         lbl7 = Label(text = "shapely")
-        lbl8 = Label(text = "PostGIS-ish operations outside a database context\n for Pythoneers and Pythonistas. https://pypi.python.org/pypi/Shapely")
+        lbl8 = Label(text = "PostGIS-ish operations outside a database context\nfor Pythoneers and Pythonistas. https://pypi.python.org/pypi/Shapely")
         lbl9 = Label(text = "PyGUI")
-        lbl10 = Label(text = "A cross-platform pythonic GUI API:\n http://www.cosc.canterbury.ac.nz/greg.ewing/python_gui/")
+        lbl10 = Label(text = "A cross-platform pythonic GUI API:\nhttp://www.cosc.canterbury.ac.nz/greg.ewing/python_gui/")
+        lbl11 = Label(text = "This tool generates data based on information extracted from openstreetmaps.org. \n\
+This data is not provided as part of the tool. Users have to export this data themselves. \n\
+This data is available under the Open Database License (ODbL). - See more at: \n\
+http://opendatacommons.org/licenses/odbl/1.0/ \n\
+This tool uses data extracted from OurAirports.com, an open-aviation data website,\n\
+where airport data is released under public domain. See more at: \n\
+http://www.ourairports.com/data/")
         dlog.place(lbl, left = 20, top = 20)
         dlog.place(lbl1, left = 20, top = lbl.bottom + 20)
         dlog.place(lbl2, left = 20, top = lbl1.bottom + 20)
         dlog.place(lbl3, left = 20, top = lbl2.bottom + 20)
-        dlog.place(lbl4, left = 20, top = lbl3.bottom + 20)
+        dlog.place(lbl11, left = 20, top = lbl3.bottom + 20)
+        dlog.place(lbl4, left = 20, top = lbl11.bottom + 20)
         items = [[lbl5, lbl6], [lbl7, lbl8], [lbl9, lbl10]]
         grid = Grid(items, top = lbl4.bottom + 20, left = 20, width = dlog.width - 40, height = 400)
         dlog.add(grid)
@@ -272,6 +280,10 @@ class OSMAirportsX(object):
         else:
             path = self.genpath.path
         OSMAirportsData = OSMAirportDataExtractor(self.icao.value, file=self.osmfileref.path, ourairportsdata = self.OurAirportsData)
+        retVal = OSMAirportsData.ExtractData()
+        if retVal == -1:
+            note_alert("Did not find one or more runways in OSM Data!  \
+                        May be incorrect/outdated. The generation will proceed anyway.")
         OXpsc = XPAPTDataCreator(self.icao.value, self.osmfileref, centerlines=self.taxi_centerlines.on, 
                                 centerlights=self.taxi_centerlights.on, 
                                 edgelines=self.taxi_edgelines.on, 

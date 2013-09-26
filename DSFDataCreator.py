@@ -27,6 +27,7 @@ import sys
 import os
 import codecs
 from shapely.geometry import LinearRing, LineString, Point
+import utm as UTM
 
 class DSFDataCreator(object):
 
@@ -42,6 +43,10 @@ class DSFDataCreator(object):
             lon, lat = self.OSMData.lstBoundaries[0]
         else:
             osmid, lon, lat = self.OSMData.lstCoords[0]
+
+        if self.OSMData.GetUseItm():
+          (lat, lon) = UTM.to_latlon(lon, lat, self.OSMData.GetZones()[0][0], self.OSMData.GetZones()[0][1])
+
         self.latmin=lat
         self.latmax=lat
         self.lonmin=lon
@@ -49,12 +54,16 @@ class DSFDataCreator(object):
         self.lstfacades = []
         if self.OSMData.lstBoundaries:
             for lon, lat in self.OSMData.lstBoundaries:
+                if self.OSMData.GetUseItm():
+                  (lat, lon) = UTM.to_latlon(lon, lat, self.OSMData.GetZones()[0][0], self.OSMData.GetZones()[0][1])
                 if lat < self.latmin: self.latmin = lat
                 if lat > self.latmax: self.latmax = lat
                 if lon < self.lonmin: self.lonmin = lon
                 if lon > self.lonmax: self.lonmax = lon
         else:
             for osmid, lon, lat in self.OSMData.lstCoords:
+                if self.OSMData.GetUseItm():
+                  (lat, lon) = UTM.to_latlon(lon, lat, self.OSMData.GetZones()[0][0], self.OSMData.GetZones()[0][1])
                 if lat < self.latmin: self.latmin = lat
                 if lat > self.latmax: self.latmax = lat
                 if lon < self.lonmin: self.lonmin = lon
@@ -82,21 +91,25 @@ class DSFDataCreator(object):
                 raise
                 print 'Failed!!!'
                 sys.exit(0)
-                
+
     def WritePolygon(self, arg1, arg2, arg3, lst, cw=True):
         if cw == True:
             lst = self.IdentifyWinding(lst)
         if lst:
             lon, lat = lst[0]
+            if self.OSMData.GetUseItm():
+              (lat, lon) = UTM.to_latlon(lon, lat, self.OSMData.GetZones()[0][0], self.OSMData.GetZones()[0][1])
             latindex = int(lat) - int(self.latmin)
             lonindex = int(lon) - int(self.lonmin)
             self.lsthnddsf[latindex][lonindex].write('BEGIN_POLYGON %s %s %s\n' % (arg1, arg2, arg3))
             self.lsthnddsf[latindex][lonindex].write('BEGIN_WINDING\n')
             for lon, lat in lst[:-1]:
+                if self.OSMData.GetUseItm():
+                  (lat, lon) = UTM.to_latlon(lon, lat, self.OSMData.GetZones()[0][0], self.OSMData.GetZones()[0][1])
                 self.lsthnddsf[latindex][lonindex].write("POLYGON_POINT %f %f %f\n" % (lon, lat, 0.0))
             self.lsthnddsf[latindex][lonindex].write('END_WINDING\n')
             self.lsthnddsf[latindex][lonindex].write('END_POLYGON\n')
-        
+
     def WriteFileHeader(self, hndl, i, j):
         if sys.platform == 'darwin':
             plm = 'A'
@@ -170,6 +183,7 @@ class DSFDataCreator(object):
         return retVal
     
     def CreateTerminals(self):
+        print 'Creating Terminals...'
         for terminal in self.OSMData.lstTerminals:
             (min, max) = self.terminal_height
             terminal_index = random.randint(0, 2)
@@ -177,6 +191,7 @@ class DSFDataCreator(object):
             self.WritePolygon(terminal_index, bldg_height, 3, terminal)  
             
     def CreateApronFloodLights(self): 
+        print 'Creating Apron Floodlights...'
         for apron in self.OSMData.lstAprons:
             skip = 0 
             osmid, name, surface, coords = apron
@@ -221,6 +236,9 @@ class DSFDataCreator(object):
     def Bearing(self, P1,P2):
         lon1, lat1 = P1
         lon2, lat2 = P2
+        if self.OSMData.GetUseItm():
+            (lat1, lon1) = UTM.to_latlon(lon1, lat1, self.OSMData.GetZones()[0][0], self.OSMData.GetZones()[0][1])
+            (lat2, lon2) = UTM.to_latlon(lon2, lat2, self.OSMData.GetZones()[0][0], self.OSMData.GetZones()[0][1])
         lat1 = math.radians(lat1)
         lon1 = math.radians(lon1)
         lat2 = math.radians(lat2)
@@ -233,6 +251,7 @@ class DSFDataCreator(object):
         return (bearing)
 
     def CreateGates(self):
+        print 'Creating Gates...'
         for gatepos in self.OSMData.lstGates:
             distmin = 0
             for terminal in self.OSMData.lstTerminals:
@@ -251,6 +270,9 @@ class DSFDataCreator(object):
             gatelon, gatelat = gatepos
             termlon, termlat = posmin
             brng = self.Bearing(posmin, gatepos)
+            if self.OSMData.GetUseItm():
+              (gatelat, gatelon) = UTM.to_latlon(gatelon, gatelat, self.OSMData.GetZones()[0][0], self.OSMData.GetZones()[0][1])
+              (termlat, termlon) = UTM.to_latlon(termlon, termlat, self.OSMData.GetZones()[0][0], self.OSMData.GetZones()[0][1])
             latindex = int(gatelat) - int(self.latmin)
             lonindex = int(gatelon) - int(self.lonmin)
             self.lsthnddsf[latindex][lonindex].write("OBJECT 0 %f %f %f\n" % (termlon, termlat, brng))
@@ -258,10 +280,12 @@ class DSFDataCreator(object):
         
   
     def CreateHangars(self):
+        print 'Creating Hangars...'
         for hangar in self.OSMData.lstHangars:
             self.WritePolygon(3, 19, 3, hangar)
             
     def CreateBldgs(self):
+        print 'Creating Buildings...'
         for bldg in self.OSMData.lstBldgs:
             bldg_index = random.randint(6, 9)
             (min, max) = self.bldg_height
@@ -269,10 +293,12 @@ class DSFDataCreator(object):
             self.WritePolygon(bldg_index, bldg_height, 3, bldg)
 
     def CreateFences(self):
+        print 'Creating Fences...'
         for fence in self.OSMData.lstFences:
             self.WritePolygon(5, 50, 3, fence, cw=False)
         
     def close(self):
+        print 'Closing all files...'
         for i in range(int(self.latmax)-int(self.latmin) + 1):
             for j in range(int(self.lonmax)-int(self.lonmin) + 1):
                 self.lsthnddsf[i][j].close()
