@@ -25,6 +25,7 @@ import re
 import sys
 import math
 from lxml import etree
+import utm as UTM
 
 class OSMAirportDataExtractor(object):
     def __init__(self, icao='', file='', ourairportsdata = None):
@@ -53,23 +54,38 @@ class OSMAirportDataExtractor(object):
         self.lstBeacons = []
         self.lstPapi = []
         self.lstWindsocks = []
+        self.use_itm = True
+        self.lstZones = []
         self.file = file
         self.OurAirportsData = ourairportsdata
-        
+
     def coords(self, osmfile):
         context = etree.iterparse(osmfile, events=('end',), tag='node')
         for event, elem in context:
-            osm_id=elem.attrib['id']	
+            osm_id=elem.attrib['id']
             lat=float(elem.attrib['lat'])
             lon=float(elem.attrib['lon'])
-            self.lstCoords.append((osm_id, lon, lat))
-        
+
+            if self.use_itm:
+              utm = UTM.from_latlon(lat,lon)
+              self.lstZones.append(utm[2:])
+              self.lstCoords.append((osm_id, utm[0], utm[1]))
+            else:
+              self.lstCoords.append((osm_id, lon, lat))
+
     def nodes(self, osmfile):
         context = etree.iterparse(osmfile, events=('end',), tag='node')
         for event, elem in context:
-            osm_id=elem.attrib['id']	
+            osm_id=elem.attrib['id']
             lat=float(elem.attrib['lat'])
             lon=float(elem.attrib['lon'])
+
+            if self.use_itm:
+              utm = UTM.from_latlon(lat,lon)
+              self.lstZones.append(utm[2:])
+              lon = utm[0]
+              lat = utm[1]
+
             for c in elem:
                 if c.tag == 'tag':
                     if c.attrib['k'] == 'aeroway':
@@ -267,7 +283,13 @@ class OSMAirportDataExtractor(object):
                 lon, lat = self.CoordsFromRef(ref1)
                 break
         return(float(lon), float(lat))
-        
+
+    def GetUseItm(self):
+      return self.use_itm
+
+    def GetZones(self):
+      return self.lstZones
+
     def ExtractData(self):
         runway = dict()
         print "Attempting to read %s..." % self.file
@@ -357,5 +379,6 @@ class OSMAirportDataExtractor(object):
         print "Number of Buildings: %d" % len(self.lstBldgRefs)
         print "Number of Fence Segments: %d" % len(self.lstFenceRefs)
         print "Number of Service Road Segments: %d" % len(self.lstServiceRoadRefs)
+        print "Number of UTM zones: %d " % len(list(set(self.lstZones)))
         return 0
 
