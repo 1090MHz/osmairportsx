@@ -26,7 +26,7 @@ import os
 import shutil
 import copy
 import codecs
-from shapely.geometry import LinearRing, LineString, Point
+from shapely.geometry import LinearRing, LineString, Point, Polygon
 import utm as UTM
 
 class XPAPTDataCreator(object):
@@ -49,6 +49,7 @@ class XPAPTDataCreator(object):
         self.lepos = 0
         self.hepos = 0
         self.lstEdgeLines = []
+        self.lstRunwayData = []
         print 'Initializing the XPAPTDataCreator...'
         self.OurAirportsData = ourairportsdata
         self.OSMAirportsData = osmdata
@@ -101,9 +102,10 @@ class XPAPTDataCreator(object):
         return 0
         
     def WriteRunwayDefs(self):
+        print 'Writing Runway Definitions...'
         for runway in self.OurAirportsData.lstRunways:
             edgeLighting = self.OurAirportsData.GetEdgeLightingCode(runway)
-            runwayWidthFt = self.OurAirportsData.GetRunwayWidthFt(runway)
+            runwayWidth = self.OurAirportsData.GetRunwayWidth(runway)
             lighted = self.OurAirportsData.IsRunwayLighted(runway)
             leRunwayNumber = self.OurAirportsData.GetLeRunwayNumber(runway)
             found, surface, leRunwayPosOSM = self.OSMAirportsData.GetRunwayPos(leRunwayNumber)
@@ -135,21 +137,21 @@ class XPAPTDataCreator(object):
                 heRunwayPosOSM = tmp
             lelon, lelat = leRunwayPosOSM
             helon, helat = heRunwayPosOSM
-
+            self.lstRunwayData.append(((lelon, lelat), (helon, helat), float(runwayWidth)))
             if self.OSMAirportsData.GetUseItm():
               (lelat, lelon) = UTM.to_latlon(lelon, lelat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
               (helat, helon) = UTM.to_latlon(helon, helat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
-
+            
             if surface == '':
                surfaceCode = self.OurAirportsData.GetSurfaceCode(runway)
             else:
                 surfaceCode = self.OSMAirportsData.GetSurfaceCode(surface)
             if surfaceCode == 13: #Water runway
                 str = "101   %s   1   %s   %.8f %013.8f %s   %.8f %013.8f\n" % \
-                      (runwayWidthFt, leRunwayNumber, lelat, lelon, heRunwayNumber, helat, helon)
+                      (runwayWidth, leRunwayNumber, lelat, lelon, heRunwayNumber, helat, helon)
             else:
                 str = "100   %s   %s   %s 0.25 %s %s %s %s   %.8f %013.8f    %s    0.00 %s  %s %s %s %s   %.8f %013.8f    %s    0.00 %s  %s %s %s\n" % \
-                      (runwayWidthFt, surfaceCode, shoulderSurface, centerlights, edgelights, \
+                      (runwayWidth, surfaceCode, shoulderSurface, centerlights, edgelights, \
                       drs, leRunwayNumber, lelat, lelon, leDisplacedThresholdFt, le_rm, \
                       le_appr_lighting, le_tdz, le_reil, heRunwayNumber, helat, helon, \
                       heDisplacedThresholdFt, he_rm, he_appr_lighting, he_tdz, he_reil)
@@ -157,12 +159,14 @@ class XPAPTDataCreator(object):
         return 0
 
     def WriteBeaconDefs(self):
+        print 'Writing Beacon Definitions...'
         for lon, lat in self.OSMAirportsData.lstBeacons:
             if self.OSMAirportsData.GetUseItm():
               (lat, lon) = UTM.to_latlon(lon, lat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
             self.hndApt.write("18   %.8f %013.8f 1 BCN\n" % (lat, lon))
 
     def WriteWindsockDefs(self):
+        print 'Writing Windsock Definitions...'
         for lon, lat in self.OSMAirportsData.lstWindsocks:
             if self.OSMAirportsData.GetUseItm():
               (lat, lon) = UTM.to_latlon(lon, lat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
@@ -228,6 +232,7 @@ class XPAPTDataCreator(object):
         return lstArea
                         
     def WritePavedSurfaceDefs(self):
+        print 'Writing Apron Definitions...'
         for pavement in self.OSMAirportsData.lstAprons:
             osmid, name, surface, coords = pavement
             surfaceCode = self.GetSurfaceCode(surface, self.apron_type)
@@ -251,13 +256,13 @@ class XPAPTDataCreator(object):
               if self.OSMAirportsData.GetUseItm():
                 (lat, lon) = UTM.to_latlon(lon, lat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
               self.hndApt.write("113  %.8f %013.8f %d\n" % (float(lat), float(lon), lightcode))
-
-    def CalcTaxiArea(self, osmid, taxiway, width):
+        
+    def CalcAreaBuffer1(self, centerline, width, itm=False):
         lstlPos = []
         lstrPos = []
-        centerline = LineString(taxiway)
+        centerline = LineString(centerline)
         offset = abs(width/2/111132.92)
-        if self.OSMAirportsData.GetUseItm():
+        if itm:
           offset = width/2
 
         tmp = centerline.parallel_offset(offset, 'left')
@@ -285,12 +290,12 @@ class XPAPTDataCreator(object):
         self.lstEdgeLines.append(lstrPos)
         return index, copy.deepcopy(retVal)
 
-    def CalcTaxiAreaBuffer(self, osmid, taxiway, width):
+    def CalcAreaBuffer(self, centerline, width, itm=False):
         lstlPos = []
         lstrPos = []
-        centerline = LineString(taxiway)
+        centerline = LineString(centerline)
         offset = abs(width/2/111132.92)
-        if self.OSMAirportsData.GetUseItm():
+        if itm:
           offset = width/2
 
         area = copy.deepcopy(LinearRing(centerline.buffer(offset, 3).exterior.coords))
@@ -303,33 +308,6 @@ class XPAPTDataCreator(object):
         self.lstEdgeLines.append(lstlPos)
         self.lstEdgeLines.append(lstrPos)
         return index, copy.deepcopy(retVal)
-
-    def CalcServiceRoadArea(self, osmid, taxiway, width):
-        lstlPos = []
-        lstrPos = []
-        centerline = LineString(taxiway)
-        offset = abs(width/2/111132.92)
-        if self.OSMAirportsData.GetUseItm():
-          offset = width/2
-
-        tmp = centerline.parallel_offset(offset, 'left')
-        if tmp.type == 'MultiLineString':
-            for line in tmp.geoms:
-                lstlPos = lstlPos + copy.deepcopy(list(line.coords[:]))
-        else:
-            lstlPos = copy.deepcopy(list(tmp.coords[:]))
-        tmp = centerline.parallel_offset(offset, 'right')
-        if tmp.type == 'MultiLineString':
-            for line in tmp.geoms:
-                lstrPos = lstrPos + copy.deepcopy(list(line.coords[:]))
-        else:
-            lstrPos = copy.deepcopy(list(tmp.coords[:]))
-        area = copy.deepcopy(LinearRing(lstrPos + lstlPos))
-        if not area.is_ccw:
-            retVal = list(area.coords)[::-1]
-        else:
-            retVal = list(area.coords)
-        return copy.deepcopy(retVal)
 
     def SnapToRunway(self, lst):
         for pt in lst:
@@ -372,11 +350,12 @@ class XPAPTDataCreator(object):
         return dist
 
     def WriteTaxiwaySurfaceDefs(self):
+        print 'Writing Taxiway Definitions...'
         lstAreaStore = []
         lstsorted = sorted(self.OSMAirportsData.lstTaxiways, key=lambda x: x[3], reverse=True)
         for taxiways in lstsorted:
             osmid, name, surface, dist, coords = taxiways
-            index, lstArea = self.CalcTaxiArea(osmid, coords, self.taxiway_width)
+            index, lstArea = self.CalcAreaBuffer1(coords, self.taxiway_width, itm=True)
             lstAreaStore.append(lstArea)
             surfaceCode = self.GetSurfaceCode(surface, self.taxiway_type)
             self.hndApt.write('\n110   %d 0.25  0.00 Taxiway: %s, OSM ID: %s\n' % (surfaceCode, name, osmid))
@@ -387,15 +366,13 @@ class XPAPTDataCreator(object):
                 lightcode = 0
             for lon, lat in lstArea[:-1]:
                 overlap = 0
-
+                for lepos, hepos, width in self.lstRunwayData:
+                    index1, coords = self.CalcAreaBuffer1([lepos, hepos], width, itm=True)
+                    if Polygon(coords).contains(Point(lon, lat)):
+                        overlap = 1
+                        break
                 if self.OSMAirportsData.GetUseItm():
                   (lat, lon) = UTM.to_latlon(lon, lat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
-
-#                 for prev in lstAreaStore:
-#                     coords1 = prev
-#                     if LinearRing(coords1).contains(Point(lon, lat)):
-#                         overlap = 1
-#                         break
                 if (i == index) or (i == 0) or (overlap == 1):
                     self.hndApt.write("111  %.8f %013.8f\n" % (float(lat), float(lon)))
                 else:
@@ -412,7 +389,7 @@ class XPAPTDataCreator(object):
             coords = taxiways
             dist = self.FindLength(coords)
             if dist < 5e-3:
-                lstArea = self.CalcTaxiArea(None, coords, 8)
+                lstArea = self.CalcAreaBuffer(coords, 8)
                 surfaceCode = 15
                 self.hndApt.write('\n110   15 0.25  0.00 Transparent: xxx\n')
                 for lon, lat in lstArea[:-1]:
@@ -426,9 +403,10 @@ class XPAPTDataCreator(object):
 
 
     def WriteServiceRoadDefs(self):
+        print 'Writing service road Definitions...'
         for roads in self.OSMAirportsData.lstServiceRoads:
             osmid, name, surface, coords = roads
-            lstArea = self.CalcServiceRoadArea(osmid, coords, 8)
+            index, lstArea = self.CalcAreaBuffer1(coords, 8, itm=True)
             surfaceCode = self.GetSurfaceCode(surface, self.taxiway_type)
             self.hndApt.write('\n110   %d 0.25  0.00 Service Road: %s, OSM ID: %s\n' % (surfaceCode, name, osmid))
             for lon, lat in lstArea[:-1]:
@@ -441,6 +419,7 @@ class XPAPTDataCreator(object):
             self.hndApt.write("113  %.8f %013.8f\n" % (float(lat), float(lon)))
 
     def WriteTaxiwayCenterLineDefs(self):
+        print 'Writing Taxiway centerline Definitions...'
         if self.centerlights == True:
             lightcode = 101
         else:
@@ -457,24 +436,8 @@ class XPAPTDataCreator(object):
               (lat, lon) = UTM.to_latlon(lon, lat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
             self.hndApt.write("115  %.8f %013.8f\n" % (float(lat), float(lon)))
 
-    def WriteTaxiwayEdgeLineDefs(self):
-        if self.edgelights == True:
-            lightcode = 102
-        else:
-            lightcode = 0
-        for edgeline in self.lstEdgeLines:
-            if edgeline:
-                self.hndApt.write('\n120 Taxiway Edge-Line\n')
-                for lon, lat in edgeline[:-1]:
-                    if self.OSMAirportsData.GetUseItm():
-                      (lat, lon) = UTM.to_latlon(lon, lat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
-                    self.hndApt.write("111  %.8f %013.8f 1 %d\n" % (float(lat), float(lon), lightcode))
-                lon, lat = edgeline[-1]
-                if self.OSMAirportsData.GetUseItm():
-                  (lat, lon) = UTM.to_latlon(lon, lat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
-                self.hndApt.write("115  %.8f %013.8f\n" % (float(lat), float(lon)))
-
     def WriteAirportBoundaryDefs(self):
+        print 'Writing Airport Boundary Definitions...'
         if self.OSMAirportsData.lstBoundaries:
             self.hndApt.write('\n130 Airport Boundary\n')
             for lon, lat in self.OSMAirportsData.lstBoundaries[:-2]:
@@ -487,6 +450,7 @@ class XPAPTDataCreator(object):
             self.hndApt.write("113  %.8f %013.8f\n" % (float(lat), float(lon)))
 
     def WriteFreqDefs(self):
+        print 'Writing Frequency Definitions...'
         for freq in self.OurAirportsData.lstAirportFreqs:
             if (freq['type'] == 'ASOS') or (freq['type'] == 'ATIS'):
                 freq_code = 50

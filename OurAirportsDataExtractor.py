@@ -131,7 +131,7 @@ class OurAirportsDataExtractor(object):
         if runway['lighted'] == 1: edgeLighting = 2 
         else: edgeLighting = 0 #Provide edge lighting if center lighting is available
         
-    def GetRunwayWidthFt(self, runway):
+    def GetRunwayWidth(self, runway):
         return ("%.2f" % (0.3048 * float(runway['width_ft'])))
         
     def IsRunwayLighted(self, runway):
