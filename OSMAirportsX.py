@@ -25,10 +25,11 @@ from OurAirportsDataExtractor import OurAirportsDataExtractor
 from OSMAirportDataExtractor import OSMAirportDataExtractor
 from XPAPTDataCreator import XPAPTDataCreator
 from DSFDataCreator import DSFDataCreator
-from GUI import Window, CheckBox, Button, Label, TextField, rgb, application, FileDialogs, Grid, ListButton, Dialog
+from GUI import Window, CheckBox, Button, Label, TextField, rgb, application, FileDialogs, Grid, ListButton, Dialog, Task
 from GUI.Files import FileType, DirRef, FileRef
 from GUI.Alerts import stop_alert, note_alert
 from GUI.StdMenus import basic_menus, file_cmds, help_cmds, edit_cmds, print_cmds
+from multiprocessing import Process, Queue
 
 class OSMAirportsXWindow(Window):
 
@@ -73,6 +74,8 @@ class OSMAirportsX(object):
         self.osmfileref = ''
         self.genpath = None
         self.OurAirportsData = None
+        self.proc = None
+        self.timer = None
         self.last_dir = DirRef(os.path.expanduser("~"))
         #self.last_dir = DirRef(path = os.path.abspath(os.path.dirname(sys.argv[0])))
         self.genpath = self.last_dir
@@ -97,6 +100,7 @@ class OSMAirportsX(object):
         self.filename = Label(text = "Filename: ", width = 150) 
         self.lbl_le_rm = Label(width=100, text = "")
         self.lbl_he_rm = Label(width=100, text = "")
+        self.status_label = None
         """Text Fields"""
         self.icao = TextField(width = 100)
         self.taxi_width = TextField(width = 100, value = '32')
@@ -167,10 +171,10 @@ class OSMAirportsX(object):
                 [label14, self.terminal_height_min, Label(text="-"), self.terminal_height_max],
                 [self.btnGenerate, dirpath]]
         grid = Grid(items, top = 20, left = 20, width = 780, height = 580)
-        win = OSMAirportsXWindow(width = 800, height =  600, title = "OSMAirportsX", resizable = False, zoomable = False)
-        win.add(grid)
-        win.place(self.lblgenpath, left = dirpath.right + 20, top = dirpath.bottom)
-        win.show()
+        self.win = OSMAirportsXWindow(width = 800, height =  600, title = "OSMAirportsX", resizable = False, zoomable = False)
+        self.win.add(grid)
+        self.win.place(self.lblgenpath, left = dirpath.right + 20, top = dirpath.bottom)
+        self.win.show()
         app = application() 
         app.menus = basic_menus(exclude = file_cmds + edit_cmds + print_cmds) 
         app.run()
@@ -268,13 +272,30 @@ class OSMAirportsX(object):
         
         
     def generate(self):
-        #p = Process(target=self.execute)
-        #p.start()
-        retVal = self.execute()
-        if retVal == 0:
+        self.q = Queue()
+        self.timer = Task(self.check_task, 1.0, True)
+        self.proc = Process(target=self.execute, args=(self.q,))
+        self.proc.start()
+        self.status = Dialog(width = 100, height = 80, closable = False)
+        lbl = Label(text = "Generating...")
+        self.status.place(lbl)
+        self.status.show()
+        # retVal = self.execute()
+#         if retVal == 0:
+#             note_alert('Airport scenery generated.')
+
+    def check_task(self):
+        if not self.proc.is_alive():
+            self.timer.stop()
+            del self.timer
+            self.status.destroy()
+            del self.status
             note_alert('Airport scenery generated.')
+        else:
+            if not self.q.empty():
+                note_alert(self.q.get())
         
-    def execute(self):
+    def execute(self, q):
         if not self.genpath:
             path = '.'
         else:
@@ -282,7 +303,7 @@ class OSMAirportsX(object):
         OSMAirportsData = OSMAirportDataExtractor(self.icao.value, file=self.osmfileref.path, ourairportsdata = self.OurAirportsData)
         retVal = OSMAirportsData.ExtractData()
         if retVal == -1:
-            note_alert("Did not find one or more runways in OSM Data!  \
+            q.put("Did not find one or more runways in OSM Data!  \
                         May be incorrect/outdated. The generation will proceed anyway.")
         OXpsc = XPAPTDataCreator(self.icao.value, self.osmfileref, centerlines=self.taxi_centerlines.on, 
                                 centerlights=self.taxi_centerlights.on, 
@@ -299,7 +320,7 @@ class OSMAirportsX(object):
         OXpsc.WriteAPTHeader()
         retVal = OXpsc.WriteRunwayDefs()
         if retVal == -1:
-            stop_alert("Did not find runway in OSM Data!  \
+            q.put("Did not find runway in OSM Data!  \
                         May be incorrect/outdated. Correct the problem to proceed further")
             return -1
         OXpsc.WritePapiDefs()
@@ -307,11 +328,14 @@ class OSMAirportsX(object):
         if OXpsc.centerlines:
             OXpsc.WriteTaxiwayCenterLineDefs()
         OXpsc.WriteServiceRoadDefs()
+        OXpsc.WriteServiceRoadCenterLineDefs()
+        OXpsc.WriteHoldingPositionLineDefs()
         OXpsc.WritePavedSurfaceDefs()
         #OXpsc.WriteTransparentSurfaceDefs()
         OXpsc.WriteAirportBoundaryDefs()
         OXpsc.WriteBeaconDefs()
         OXpsc.WriteWindsockDefs()
+        OXpsc.WriteTaxiStartDefs()
         OXpsc.WriteFreqDefs()
         OXpsc.close()
         DSFObject = DSFDataCreator(self.icao.value, osmdata=OXpsc.OSMAirportsData,
@@ -322,6 +346,7 @@ class OSMAirportsX(object):
         DSFObject.CreateGates()
         DSFObject.CreateHangars()
         DSFObject.CreateBldgs()
+        DSFObject.CreateTowers()
         DSFObject.CreateFences()
         if self.apron_floodlights.on == True:
             DSFObject.CreateApronFloodLights()

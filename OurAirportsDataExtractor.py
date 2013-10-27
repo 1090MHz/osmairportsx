@@ -138,13 +138,13 @@ class OurAirportsDataExtractor(object):
         return ("%s" % runway['lighted'])
         
     def GetLeRunwayNumber(self, runway):
-        return("%s" % runway['le_ident'])
+        return("%s" % runway['le_ident'].upper())
         
     def GetLeRunwayPosTuple(self, runway):
         return(float(runway['le_longitude_deg']), float(runway['le_latitude_deg']))
         
     def GetHeRunwayNumber(self, runway):
-        return("%s" % runway['he_ident'])
+        return("%s" % runway['he_ident'].upper())
         
     def GetHeRunwayPosTuple(self, runway):
         return(float(runway['he_longitude_deg']), float(runway['he_latitude_deg']))

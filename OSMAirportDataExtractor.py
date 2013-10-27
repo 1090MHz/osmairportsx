@@ -26,6 +26,9 @@ import sys
 import math
 from lxml import etree
 import utm as UTM
+import re
+from shapely import affinity
+from shapely.geometry import Polygon, LineString
 
 class OSMAirportDataExtractor(object):
     def __init__(self, icao='', file='', ourairportsdata = None):
@@ -45,10 +48,16 @@ class OSMAirportDataExtractor(object):
         self.lstGates = []
         self.lstHangarRefs = []
         self.lstHangars = []
+        self.lstHoldingRefs = []
+        self.lstHoldings = []
         self.lstBldgRefs = []
         self.lstBldgs = []
         self.lstFenceRefs = []
         self.lstFences = []
+        self.lstTowerRefs = []
+        self.lstTowers = []
+        self.lstParkingRefs = []
+        self.lstParkings = []
         self.lstServiceRoadRefs = []
         self.lstServiceRoads = []
         self.lstBeacons = []
@@ -90,7 +99,12 @@ class OSMAirportDataExtractor(object):
                 if c.tag == 'tag':
                     if c.attrib['k'] == 'aeroway':
                         if c.attrib['v'] == 'gate':
-                            self.lstGates.append((lon, lat))
+                            ref = ''
+                            for nodes in c.getparent():
+                                if nodes.tag == 'tag':
+                                    if nodes.attrib['k'] == 'ref':
+                                        ref = nodes.attrib['v'] 
+                            self.lstGates.append((ref, (lon, lat)))
                         elif c.attrib['v'] == 'papi':
                             self.lstPapi.append((lon, lat))
                         elif c.attrib['v'] == 'windsock':
@@ -98,6 +112,8 @@ class OSMAirportDataExtractor(object):
                     elif c.attrib['k'] == 'man_made':
                         if c.attrib['v'] == 'beacon':
                             self.lstBeacons.append((lon, lat))
+                        elif c.attrib['v'] == 'tower':
+                            self.lstTowers.append((lon, lat))
 
     def ways(self, osmfile):
         retVal = 0
@@ -130,6 +146,7 @@ class OSMAirportDataExtractor(object):
                         aeroway = 1
                         type = c.attrib['v']
                         refs = []
+                        area = ''
                         for nodes in c.getparent():
                             if nodes.tag == 'tag':
                                 if nodes.attrib['k'] == 'ref':
@@ -138,30 +155,72 @@ class OSMAirportDataExtractor(object):
                                     name = nodes.attrib['v']
                                 if nodes.attrib['k'] == 'surface':
                                     surface = nodes.attrib['v']
+                                if nodes.attrib['k'] == 'area':
+                                    area = nodes.attrib['v']
                             if nodes.tag == 'nd':
                                 refs.append(nodes.attrib['ref'])
                         if type == 'aerodrome': self.lstBoundaryRefs.append(refs)
                         elif type == 'runway':
-                            if '/' in ref:
-                                runwayName = re.split('/', ref)
-                            elif '/' in name:
-                                runwayName = re.split('/', name)
-                            elif '-' in ref:
-                                runwayName = re.split('-', ref)
-                            elif '-' in name:
-                                runwayName = re.split('-', name)
+                            result = re.match('([0-3]*[0-9][lrLR]?).*?([0-3]*[0-9][lrLR]?).*', ref)
+                            if result:
+                                runwayName = [result.group(1).upper(), result.group(2).upper()]
                             else:
+                                result = re.match('([0-3]*[0-9][lrLR]?).*?([0-3]*[0-9][lrLR]?).*', name)
+                                if result:
+                                    runwayName = [result.group(1).upper(), result.group(2).upper()]
+                            if not result:
                                 if refs:
                                     runwayName = self.FindRunwayName((refs[0], refs[-1]))
                                 else:
                                     retVal = -1
                             if refs:
+                                if area == 'yes':
+                                    minarea = 0
+                                    coords = []
+                                    for ref in refs:
+                                        coords.append(self.CoordsFromRef(ref))
+                                    runwayP = Polygon(coords)
+                                    final_rect = None
+                                    for angle in range(0, 180):
+                                        envel = affinity.rotate(runwayP, angle)
+                                        envel = runwayP.envelope
+                                        if minarea == 0: 
+                                            minarea = envel.area
+                                            final_rect = envel
+                                            ang = angle
+                                        elif minarea > envel.area: 
+                                            minarea = envel.area 
+                                            final_rect = envel
+                                            ang = angle
+                                    final_rect = affinity.rotate(runwayP, -ang)
+                                    if not final_rect.exterior.is_ccw:
+                                        coords = final_rect.exterior.coords[::-1]
+                                    else:
+                                        coords = final_rect.exterior.coords[:]
+                                    ls = LineString([coords[0], coords[1]])
+                                    ls1 = LineString([coords[0], coords[-1]])
+                                    if ls.length > ls1.length:
+                                        x1, y1 = coords[0]
+                                        x2, y2 = coords[-1]
+                                        p1 = ((x1+x2)/2, (y1+y2)/2)
+                                        x1, y1 = coords[1]
+                                        x2, y2 = coords[2]
+                                        p2 = ((x1+x2)/2, (y1+y2)/2)
+                                    else:
+                                        x1, y1 = coords[0]
+                                        x2, y2 = coords[1]
+                                        p1 = ((x1+x2)/2, (y1+y2)/2)
+                                        x1, y1 = coords[2]
+                                        x2, y2 = coords[3]
+                                        p2 = ((x1+x2)/2, (y1+y2)/2)
+                                    print p1, p2
                                 runwayRefs = (runwayName[0].strip(), refs[0], runwayName[1].strip(), refs[-1])
                                 self.lstRunwayRefs.append((surface, runwayRefs))
                         elif type == 'taxiway': self.lstTaxiwayRefs.append((osmid, ref, name, surface, refs))
                         elif type == 'apron': self.lstApronRefs.append((osmid, ref, name, surface, refs))
                         elif type == 'terminal': self.lstTerminalRefs.append(refs)
                         elif type == 'hangar': self.lstHangarRefs.append(refs)
+                        elif type == 'holding_position': self.lstHoldingRefs.append(refs)
                     elif (c.attrib['k'] == 'building') and (aeroway == 0):
                         refs = []
                         for nodes in c.getparent():
@@ -174,6 +233,12 @@ class OSMAirportDataExtractor(object):
                             if nodes.tag == 'nd':
                                 refs.append(nodes.attrib['ref'])
                         self.lstFenceRefs.append(refs)
+                    elif (c.attrib['k'] == 'amenity') and (c.attrib['v'] == 'parking'):
+                        refs = []
+                        for nodes in c.getparent():
+                            if nodes.tag == 'nd':
+                                refs.append(nodes.attrib['ref'])
+                        self.lstParkingRefs.append(refs)
             elem.clear()
 
         while elem.getprevious() is not None:
@@ -355,6 +420,27 @@ class OSMAirportDataExtractor(object):
                 coord = self.CoordsFromRef(ref)
                 lsttmp.append(coord)
             self.lstBldgs.append(copy.deepcopy(lsttmp))
+#         print "Done.\nExtracting Towers..."
+#         for tower in self.lstTowerRefs:
+#             lsttmp = []
+#             for ref in tower:
+#                 coord = self.CoordsFromRef(ref)
+#                 lsttmp.append(coord)
+#             self.Towers.append(copy.deepcopy(lsttmp))
+        print "Done.\nExtracting Holding positions..."
+        for holding in self.lstHoldingRefs:
+            lsttmp = []
+            for ref in holding:
+                coord = self.CoordsFromRef(ref)
+                lsttmp.append(coord)
+            self.lstHoldings.append(copy.deepcopy(lsttmp))
+        print "Done.\nExtracting Parking..."
+        for bldg in self.lstParkingRefs:
+            lsttmp = []
+            for ref in bldg:
+                coord = self.CoordsFromRef(ref)
+                lsttmp.append(coord)
+            self.lstParkings.append(copy.deepcopy(lsttmp))
         print "Done.\nExtracting Fence segments..."
         for fence in self.lstFenceRefs:
             lsttmp = []
@@ -377,6 +463,8 @@ class OSMAirportDataExtractor(object):
         print "Number of Taxiway Segments: %d" % len(self.lstTaxiwayRefs)
         print "Number of Hangars: %d" % len(self.lstHangarRefs)
         print "Number of Buildings: %d" % len(self.lstBldgRefs)
+        print "Number of Towers: %d" % len(self.lstTowers)
+        print "Number of Parking Areas: %d" % len(self.lstParkingRefs)
         print "Number of Fence Segments: %d" % len(self.lstFenceRefs)
         print "Number of Service Road Segments: %d" % len(self.lstServiceRoadRefs)
         print "Number of UTM zones: %d " % len(list(set(self.lstZones)))
