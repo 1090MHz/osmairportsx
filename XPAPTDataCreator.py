@@ -472,42 +472,7 @@ class XPAPTDataCreator(object):
             if self.OSMAirportsData.GetUseItm():
                 (lat, lon) = UTM.to_latlon(lon, lat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
             self.hndApt.write("113  %.8f %013.8f\n" % (float(lat), float(lon)))    
-        ### Now draw surfaces in the intersections
-        # for area2 in inter:
-#             if not area2.exterior.is_ccw:
-#                 curAreaCoords = area2.exterior.coords[::-1]
-#             else:
-#                 curAreaCoords = area2.exterior.coords[:]
-#             tmpArea = curAreaCoords
-#             surfaceCode = self.GetSurfaceCode(surface, self.taxiway_type)
-#             lightcode = 0
-#             self.hndApt.write('\n110   %d 0.25  0.00 Taxiway: %s, OSM ID: %s\n' % (surfaceCode, name, osmid))
-#             for lon, lat in tmpArea[:-1]:
-#                 if self.OSMAirportsData.GetUseItm():
-#                   (lat, lon) = UTM.to_latlon(lon, lat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
-#                 self.hndApt.write("111  %.8f %013.8f\n" % (float(lat), float(lon)))
-#             (lon, lat) = tmpArea[-1]
-#             if self.OSMAirportsData.GetUseItm():
-#               (lat, lon) = UTM.to_latlon(lon, lat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
-#             self.hndApt.write("113  %.8f %013.8f\n" % (float(lat), float(lon)))
-#         for area2 in inter:
-#             if not area2.exterior.is_ccw:
-#                 curAreaCoords = area2.exterior.coords[::-1]
-#             else:
-#                 curAreaCoords = area2.exterior.coords[:]
-#             tmpArea = curAreaCoords
-#             surfaceCode = 15
-#             lightcode = 0
-#             self.hndApt.write('\n110   %d 0.25  0.00 Taxiway: %s, OSM ID: %s\n' % (surfaceCode, name, osmid))
-#             for lon, lat in tmpArea[:-1]:
-#                 if self.OSMAirportsData.GetUseItm():
-#                   (lat, lon) = UTM.to_latlon(lon, lat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
-#                 self.hndApt.write("111  %.8f %013.8f 3 %d\n" % (float(lat), float(lon), lightcode))
-#             (lon, lat) = tmpArea[-1]
-#             if self.OSMAirportsData.GetUseItm():
-#               (lat, lon) = UTM.to_latlon(lon, lat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
-#             self.hndApt.write("113  %.8f %013.8f\n" % (float(lat), float(lon)))
-
+        
     def WriteTransparentSurfaceDefs(self):
         lstTransparent = []
         for taxiways in self.lstEdgeLines:
