@@ -16,8 +16,8 @@ if sys.platform == 'darwin':
                          options=dict(py2app=dict(
                                       plist = {
                                                 'CFBundleName': 'OSMAirportsX',
-                                                'CFBundleShortVersionString':'1.1.0', # must be in X.X.X format
-                                                'CFBundleVersion': '1.1.0',
+                                                'CFBundleShortVersionString':'2.0.0', # must be in X.X.X format
+                                                'CFBundleVersion': '2.0.0',
                                                 },
                                       includes=vincludes,
                                       excludes=['numpy', 'scipy', 'matplotlib', 'email'],
