@@ -361,6 +361,7 @@ class XPAPTDataCreator(object):
         lstsorted = sorted(self.OSMAirportsData.lstTaxiways, key=lambda x: x[3], reverse=True)
         for taxiways in lstsorted:
              osmid, name, surface, dist, coords = taxiways
+             if len(coords) < 2: continue
              Area = self.CalcAreaBuffer1(coords, self.taxiway_width, itm=True)
              lstAreaStore.append(Area)
         for lepos, hepos, width in self.lstRunwayData:
