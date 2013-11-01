@@ -117,7 +117,7 @@ class OSMAirportsXWindow(Window):
         
     def about_cmd(self):
         dlog = Dialog(width = 600, height = 480, closable = True)
-        lbl = Label(text = "OSMAirportsX v1.1")
+        lbl = Label(text = "OSMAirportsX v2.0a")
         lbl1 = Label(text = "by Shankar Giri V.")
         str = "This software is available under an open-source license. \nVisit https://bitbucket.org/girivs/osmairportsx for more information."
         lbl2 = Label(text = str)
