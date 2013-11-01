@@ -160,10 +160,11 @@ class DSFDataCreator(object):
                             'lib/g10/autogen/point_building_30x30_16.fac'
                              ]
         self.lstobjects = ['lib/airport/Ramp_Equipment/Jetway_250cm.obj',
-                            'lib/airport/Ramp_Equipment/Jetway_400cm.obj',
+                            'lib/airport/Ramp_Equipment/250cm_Jetway_Group.agp',
                             'lib/airport/Ramp_Equipment/Jetway_500cm.obj',
                             'lib/airport/Common_Elements/Lighting/Dir_Ramp_Lit_Tall.obj',
-                            'lib/airport/landscape/apron_light.obj'
+                            'lib/airport/landscape/apron_light.obj',
+                            'lib/airport/Modern_Airports/Control_Towers/Modern_Tower_1.agp'
                             ]
         for object in self.lstobjects:
             hndl.write("OBJECT_DEF %s\n" % object)
@@ -176,6 +177,8 @@ class DSFDataCreator(object):
         if len(lst)<3:
             return lst
         area = LinearRing(lst)
+        if not area.is_valid:
+            area = area.Buffer(0)
         if not area.is_ccw:
             retVal = list(area.coords)[::-1]
         else:
@@ -252,7 +255,7 @@ class DSFDataCreator(object):
 
     def CreateGates(self):
         print 'Creating Gates...'
-        for gatepos in self.OSMData.lstGates:
+        for ref, gatepos in self.OSMData.lstGates:
             distmin = 0
             for terminal in self.OSMData.lstTerminals:
                 i = 0
@@ -275,8 +278,8 @@ class DSFDataCreator(object):
               (termlat, termlon) = UTM.to_latlon(termlon, termlat, self.OSMData.GetZones()[0][0], self.OSMData.GetZones()[0][1])
             latindex = int(gatelat) - int(self.latmin)
             lonindex = int(gatelon) - int(self.lonmin)
-            self.lsthnddsf[latindex][lonindex].write("OBJECT 0 %f %f %f\n" % (termlon, termlat, brng))
-            self.lsthnddsf[latindex][lonindex].write("OBJECT 3 %f %f %f\n" % (termlon, termlat, brng))
+            self.lsthnddsf[latindex][lonindex].write("OBJECT 1 %f %f %f\n" % (termlon, termlat, brng))
+            #self.lsthnddsf[latindex][lonindex].write("OBJECT 3 %f %f %f\n" % (termlon, termlat, brng))
         
   
     def CreateHangars(self):
@@ -291,6 +294,15 @@ class DSFDataCreator(object):
             (min, max) = self.bldg_height
             bldg_height = random.randint(min, max)
             self.WritePolygon(bldg_index, bldg_height, 3, bldg)
+            
+    def CreateTowers(self):
+        print 'Creating Towers...'
+        for towerlon, towerlat in self.OSMData.lstTowers:
+            if self.OSMData.GetUseItm():
+              (towerlat, towerlon) = UTM.to_latlon(towerlon, towerlat, self.OSMData.GetZones()[0][0], self.OSMData.GetZones()[0][1])
+            latindex = int(towerlat) - int(self.latmin)
+            lonindex = int(towerlon) - int(self.lonmin)
+            self.lsthnddsf[latindex][lonindex].write("OBJECT 5 %f %f %f\n" % (towerlon, towerlat, 0))
 
     def CreateFences(self):
         print 'Creating Fences...'
