@@ -29,7 +29,7 @@ from GUI import Window, CheckBox, Button, Label, TextField, rgb, application, Fi
 from GUI.Files import FileType, DirRef, FileRef
 from GUI.Alerts import stop_alert, note_alert
 from GUI.StdMenus import basic_menus, file_cmds, help_cmds, edit_cmds, print_cmds
-from multiprocessing import Process, Queue
+from multiprocessing import Process, Queue, freeze_support
 
 def execute(q, genpath, icao, osmfileref, OurAirportsData, 
     centerlines, centerlights, edgelines, edgelights, taxi_width,
@@ -117,7 +117,7 @@ class OSMAirportsXWindow(Window):
         
     def about_cmd(self):
         dlog = Dialog(width = 600, height = 480, closable = True)
-        lbl = Label(text = "OSMAirportsX v2.0a")
+        lbl = Label(text = "OSMAirportsX v2.0.1a")
         lbl1 = Label(text = "by Shankar Giri V.")
         str = "This software is available under an open-source license. \nVisit https://bitbucket.org/girivs/osmairportsx for more information."
         lbl2 = Label(text = str)
@@ -395,6 +395,7 @@ class OSMAirportsX(object):
     
         
 if __name__ == "__main__":
+    freeze_support()
     OSMAirportsX()
 
     
