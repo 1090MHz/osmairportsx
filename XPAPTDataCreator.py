@@ -447,7 +447,6 @@ class XPAPTDataCreator(object):
 #             for poly in lstApronP:
 #                 if hole.intersects(poly):
 #                     hole = hole.difference(poly).buffer(0)
-            self.hndApt.write('\n110   %d 0.25  0.00 Taxiway Hole Filling\n' % (surfaceCode))
             if type(hole) is MultiPolygon:
                 hole = cascaded_union(hole)[0]
             #hole = hole.buffer(0)
@@ -465,6 +464,8 @@ class XPAPTDataCreator(object):
                     curHoleCoords = hole.exterior.coords[:]
             else:
                 continue
+            if len(curHoleCoords) < 2: continue
+            self.hndApt.write('\n110   %d 0.25  0.00 Taxiway Hole Filling\n' % (surfaceCode))
             for (lon, lat) in curHoleCoords[:-1]:
                 if self.OSMAirportsData.GetUseItm():
                     (lat, lon) = UTM.to_latlon(lon, lat, self.OSMAirportsData.GetZones()[0][0], self.OSMAirportsData.GetZones()[0][1])
