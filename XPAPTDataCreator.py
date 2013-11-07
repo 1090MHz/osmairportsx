@@ -701,4 +701,5 @@ class XPAPTDataCreator(object):
     def close(self):
         self.hndApt.write('99\n')
         self.hndApt.close()
-        shutil.copy('apt.dat', self.path)
+        shutil.copy(u'apt.dat', self.path)
+        print 'XPAPTDataCreator Copy type', type(self.path)
