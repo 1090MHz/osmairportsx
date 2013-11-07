@@ -316,7 +316,7 @@ class DSFDataCreator(object):
                 self.lsthnddsf[i][j].close()
                 dsffile = u"%+3d%+04d.txt" % (math.floor(self.latmin)+i, math.floor(self.lonmin)+j)
                 newdir = "%+3d%+04d" % ((self.latmin+i) - ((self.latmin+i)%10), (self.lonmin+j)-((self.lonmin+j)%10))
-                self.scenery_path = os.path.join(self.path, newdir)
+                self.scenery_path = unicode(os.path.join(self.path, newdir))
                 print "Creating directory: ", self.scenery_path
                 self.mkdir(self.scenery_path)
                 print "Copying file: %s to %s" % (dsffile, self.scenery_path)

@@ -55,9 +55,9 @@ class XPAPTDataCreator(object):
         self.OurAirportsData = ourairportsdata
         self.OSMAirportsData = osmdata
         self.hndApt = codecs.open("apt.dat", "wb", "utf-8")
-        self.path = os.path.join(genpath, icao)
+        self.path = unicode(os.path.join(genpath, icao))
         self.mkdir(self.path)
-        self.path = os.path.join(self.path, 'Earth Nav Data')
+        self.path = unicode(os.path.join(self.path, 'Earth Nav Data'))
         self.mkdir(self.path)
         
         
