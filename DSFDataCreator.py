@@ -200,6 +200,8 @@ class DSFDataCreator(object):
             osmid, name, surface, coords = apron
             cent = LinearRing(coords).centroid
             (lon, lat) = cent.coords[:][0]
+            if self.OSMData.GetUseItm():
+                (lat, lon) = UTM.to_latlon(lon, lat, self.OSMData.GetZones()[0][0], self.OSMData.GetZones()[0][1])
             for terminal in self.OSMData.lstTerminals:
                 tmp = LinearRing(terminal)
                 pos = Point(lon, lat)
