@@ -20,7 +20,6 @@
 #OF SUCH DAMAGE.
 
 #!/usr/bin/env python
-import shutil
 import random
 import math
 import sys
@@ -76,7 +75,11 @@ class DSFDataCreator(object):
         for i in range(int(self.latmax)-int(self.latmin) + 1):
             for j in range(int(self.lonmax)-int(self.lonmin) + 1):
                 self.dsffile = "%+3d%+04d.txt" % (math.floor(self.latmin)+i, math.floor(self.lonmin)+j)
-                self.lsthnddsf[i][j]=codecs.open(self.dsffile, "wb", "utf-8")
+                newdir = "%+3d%+04d" % ((self.latmin+i) - ((self.latmin+i)%10), (self.lonmin+j)-((self.lonmin+j)%10))
+                scenery_path = unicode(os.path.join(self.path, newdir))
+                self.mkdir(scenery_path)
+                filename = os.path.join(scenery_path, self.dsffile)
+                self.lsthnddsf[i][j]=codecs.open(filename, "wb", "utf-8")
                 self.WriteFileHeader(self.lsthnddsf[i][j], i, j)
                 self.WriteSceneryBoundaries(self.lsthnddsf[i][j], i, j)
                 self.DefineFacadeObjects(self.lsthnddsf[i][j])
@@ -316,12 +319,3 @@ class DSFDataCreator(object):
         for i in range(int(self.latmax)-int(self.latmin) + 1):
             for j in range(int(self.lonmax)-int(self.lonmin) + 1):
                 self.lsthnddsf[i][j].close()
-                dsffile = u"%+3d%+04d.txt" % (math.floor(self.latmin)+i, math.floor(self.lonmin)+j)
-                newdir = "%+3d%+04d" % ((self.latmin+i) - ((self.latmin+i)%10), (self.lonmin+j)-((self.lonmin+j)%10))
-                self.scenery_path = unicode(os.path.join(self.path, newdir))
-                print "Creating directory: ", self.scenery_path
-                self.mkdir(self.scenery_path)
-                print "Copying file: %s to %s" % (dsffile, self.scenery_path)
-                shutil.copy(dsffile, self.scenery_path)
-                print "File type: ", type(dsffile)
-                print "Path type: ", type(self.scenery_path)

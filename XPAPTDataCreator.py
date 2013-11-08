@@ -23,7 +23,6 @@
 import sys
 import math
 import os
-import shutil
 import copy
 import codecs
 from shapely.geometry import LinearRing, LineString, Point, MultiPoint, Polygon, MultiPolygon, MultiLineString, GeometryCollection
@@ -54,11 +53,13 @@ class XPAPTDataCreator(object):
         print 'Initializing the XPAPTDataCreator...'
         self.OurAirportsData = ourairportsdata
         self.OSMAirportsData = osmdata
-        self.hndApt = codecs.open("apt.dat", "wb", "utf-8")
         self.path = unicode(os.path.join(genpath, icao))
         self.mkdir(self.path)
         self.path = unicode(os.path.join(self.path, 'Earth Nav Data'))
         self.mkdir(self.path)
+        filename = os.path.join(self.path, "apt.dat")
+        self.hndApt = codecs.open(filename, "wb", "utf-8")
+        
         
         
     def GetSurfaceCode(self, OSMSurface, optionSurface):
@@ -688,6 +689,7 @@ class XPAPTDataCreator(object):
         disty = y - y3
         dist = math.sqrt(distx*distx + disty*disty)
         return (dist, (x, y))
+        
     def mkdir(self, path):
         print 'Creating %s folder' % path
         try: 
@@ -701,5 +703,3 @@ class XPAPTDataCreator(object):
     def close(self):
         self.hndApt.write('99\n')
         self.hndApt.close()
-        shutil.copy(u'apt.dat', self.path)
-        print 'XPAPTDataCreator Copy type', type(self.path)
