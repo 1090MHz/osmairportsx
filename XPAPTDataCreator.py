@@ -274,10 +274,10 @@ class XPAPTDataCreator(object):
         lstlPos = []
         lstrPos = []
         centerline = LineString(centerline)
-        offset = abs(width/2/111132.92)
         if itm:
-          offset = width/2
-
+            offset = width/2
+        else:
+            offset = abs(width/2/111132.92)
         tmp = centerline.parallel_offset(offset, 'left')
         if tmp.type == 'MultiLineString':
             tmp = tmp[0]
@@ -363,10 +363,11 @@ class XPAPTDataCreator(object):
         for taxiways in lstsorted:
              osmid, name, surface, dist, coords = taxiways
              if len(coords) < 2: continue
-             Area = self.CalcAreaBuffer1(coords, self.taxiway_width, itm=True)
+             Area = self.CalcAreaBuffer1(coords, self.taxiway_width, itm=self.OSMAirportsData.use_itm)
              lstAreaStore.append(Area)
         for lepos, hepos, width in self.lstRunwayData:
-            poly1 = self.CalcAreaBuffer1([lepos, hepos], width, itm=True)
+            if lepos == hepos: continue
+            poly1 = self.CalcAreaBuffer1([lepos, hepos], width, itm=self.OSMAirportsData.use_itm)
             lstRunwayP.append(poly1)
         for osmid, name, surface, coords2 in self.OSMAirportsData.lstAprons:
             lstApronP.append(Polygon(coords2).buffer(0))
@@ -499,7 +500,7 @@ class XPAPTDataCreator(object):
         print 'Writing service road Definitions...'
         for roads in self.OSMAirportsData.lstServiceRoads:
             osmid, name, surface, coords = roads
-            lstArea = self.CalcAreaBuffer1(coords, 8, itm=True)
+            lstArea = self.CalcAreaBuffer1(coords, 8, itm=self.OSMAirportsData.use_itm)
             if type(lstArea) is MultiPolygon:
                 lstArea = lstArea[0]
             if not lstArea.exterior.is_ccw:
@@ -507,6 +508,9 @@ class XPAPTDataCreator(object):
             else:
                 lstArea = lstArea.exterior.coords[:]
             surfaceCode = self.GetSurfaceCode(surface, self.taxiway_type)
+            if self.OSMAirportsData.lstBoundaries:
+                if not Polygon(self.OSMAirportsData.lstBoundaries).contains(Polygon(lstArea)):
+                    continue
             self.hndApt.write('\n110   %d 0.25  0.00 Service Road: %s, OSM ID: %s\n' % (surfaceCode, name, osmid))
             for lon, lat in lstArea[:-1]:
                    if self.OSMAirportsData.GetUseItm():
@@ -521,6 +525,9 @@ class XPAPTDataCreator(object):
         print 'Writing service road centerline Definitions...'
         for roads in self.OSMAirportsData.lstServiceRoads:
             osmid, name, surface, coords = roads
+            if self.OSMAirportsData.lstBoundaries:
+                if not Polygon(self.OSMAirportsData.lstBoundaries).contains(LineString(coords)):
+                    continue
             self.hndApt.write('\n120 Service Road Centerline: %s, OSM ID: %s\n' % (name, osmid))
             for lon, lat in coords[:-1]:
                    if self.OSMAirportsData.GetUseItm():

@@ -25,7 +25,7 @@ import math
 import sys
 import os
 import codecs
-from shapely.geometry import LinearRing, LineString, Point
+from shapely.geometry import LinearRing, Polygon, LineString, Point
 import utm as UTM
 
 class DSFDataCreator(object):
@@ -52,6 +52,7 @@ class DSFDataCreator(object):
         self.lonmax=lon
         self.lstfacades = []
         if self.OSMData.lstBoundaries:
+            print "Found Airport Boundary..."
             for lon, lat in self.OSMData.lstBoundaries:
                 if self.OSMData.GetUseItm():
                   (lat, lon) = UTM.to_latlon(lon, lat, self.OSMData.GetZones()[0][0], self.OSMData.GetZones()[0][1])
@@ -179,13 +180,13 @@ class DSFDataCreator(object):
     def IdentifyWinding(self, lst):
         if len(lst)<3:
             return lst
-        area = LinearRing(lst)
+        area = Polygon(lst)
         if not area.is_valid:
-            area = area.Buffer(0)
-        if not area.is_ccw:
-            retVal = list(area.coords)[::-1]
+            area = area.buffer(0)
+        if not area.exterior.is_ccw:
+            retVal = list(area.exterior.coords)[::-1]
         else:
-            retVal = list(area.coords)
+            retVal = list(area.exterior.coords)
         return retVal
     
     def CreateTerminals(self):
@@ -298,7 +299,11 @@ class DSFDataCreator(object):
             bldg_index = random.randint(6, 9)
             (min, max) = self.bldg_height
             bldg_height = random.randint(min, max)
-            self.WritePolygon(bldg_index, bldg_height, 3, bldg)
+            if self.OSMData.lstBoundaries:
+                if Polygon(self.OSMData.lstBoundaries).contains(Polygon(bldg)):
+                    self.WritePolygon(bldg_index, bldg_height, 3, bldg)
+            else:
+                self.WritePolygon(bldg_index, bldg_height, 3, bldg)
             
     def CreateTowers(self):
         print 'Creating Towers...'
